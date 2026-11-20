@@ -1,7 +1,9 @@
+import { config } from '../config.js'
+import { retrieve } from './retrieval.js'
 import { ChatGroq } from '@langchain/groq'
 import { z } from 'zod'
-import { checklist } from './workflow.js'
-import { locations } from './catalog.js'
+import { checklist } from '../onboarding/workflow.js'
+import { locations } from '../onboarding/catalog.js'
 
 const answerSchema = z.object({
   text: z.string().trim().min(1).max(3500),
@@ -10,8 +12,8 @@ const answerSchema = z.object({
 })
 export async function hostedAnswer(question, evidence, signal) {
   const model = new ChatGroq({
-    apiKey: process.env.GROQ_API_KEY,
-    model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
+    apiKey: config.groqKey,
+    model: config.groqModel,
     temperature: 0,
     maxRetries: 0,
     maxTokens: 1400,
@@ -30,14 +32,6 @@ export async function hostedAnswer(question, evidence, signal) {
     )
   return response
 }
-const subjects = [
-  [/laptop|equipment|collect.*computer/i, 'laptop'],
-  [/office|address|access pass/i, 'office'],
-  [/benefits|enrollment options/i, 'benefits'],
-  [/payroll|bank details/i, 'payroll'],
-  [/security|training/i, 'security'],
-  [/repository|engineer.*access/i, 'repository'],
-]
 function reply(text, mode, evidence = [], escalate = false) {
   return { text, mode, evidence, escalate }
 }
@@ -45,10 +39,7 @@ export async function chat(
   db,
   employeeId,
   question,
-  {
-    infer = process.env.GROQ_API_KEY ? hostedAnswer : null,
-    timeout = 8000,
-  } = {}
+  { infer = config.groqKey ? hostedAnswer : null, timeout = 8000 } = {}
 ) {
   const profile = await checklist(db, employeeId)
   if (
@@ -57,6 +48,78 @@ export async function chat(
     )
   )
     return reply('I can only look up your own onboarding records.', 'denied')
+  if (
+    /my (?:joining|start) date|when do i start|my (?:manager|department|designation|office)\b/i.test(
+      question
+    )
+  ) {
+    const fact = {
+      id: 'profile:' + profile.id,
+      title: 'My onboarding profile',
+      body:
+        profile.job +
+        ' · ' +
+        profile.department +
+        ' · ' +
+        profile.location +
+        '. Joining date ' +
+        profile.startDate.toISOString().slice(0, 10) +
+        '. Reporting manager: ' +
+        profile.manager.name +
+        '.',
+    }
+    return reply(fact.body, 'facts', [fact])
+  }
+  if (
+    /my documents?|document (?:status|rejected|verification)|why.*document.*reject/i.test(
+      question
+    )
+  ) {
+    const docs = await db.submission.findMany({
+      where: { employeeId },
+      select: { id: true, kind: true, status: true, reason: true },
+    })
+    const facts = docs.map((d) => ({
+      id: 'document:' + d.id,
+      title: d.kind,
+      body: d.status + (d.reason ? ' · ' + d.reason : ''),
+    }))
+    return reply(
+      facts.length
+        ? facts.map((e) => e.title + ' · ' + e.body).join('\n')
+        : 'You have no submitted documents. Open My Documents to see the requirements.',
+      'facts',
+      facts
+    )
+  }
+  if (/deadline|overdue|due (?:next|soon|today)|when.*due/i.test(question)) {
+    const today = new Date(new Date().toISOString().slice(0, 10))
+    const due = profile.tasks
+      .filter(
+        (t) =>
+          t.due &&
+          t.status !== 'Complete' &&
+          (!/overdue/i.test(question) || t.due < today)
+      )
+      .sort((a, b) => a.due - b.due)
+    const facts = due.map((t) => ({
+      id: 'task:' + t.id,
+      title: t.title,
+      body:
+        t.due.toISOString().slice(0, 10) +
+        ' · ' +
+        t.status +
+        ' · ' +
+        t.owner.name,
+    }))
+    return reply(
+      facts.length
+        ? facts.map((e) => e.title + ' · ' + e.body).join('\n')
+        : 'No matching open task deadlines.',
+      'facts',
+      facts
+    )
+  }
   const asksAboutBlockers =
     /block(?:ed|er|ing)|unblock|holding up|waiting (?:on|for)/i.test(question)
   const asksAboutNext =
@@ -69,10 +132,7 @@ export async function chat(
     /who owns|my status|which tasks|my checklist|remaining tasks/i.test(
       question
     )
-  const topic = subjects.find(([pattern]) => pattern.test(question))?.[1]
-  const policy =
-    topic &&
-    (!status || /policy|where|how do|what is the address/i.test(question))
+  const policy = !status || /policy|where|how do/i.test(question)
   let evidence = []
   if (status) {
     let tasks = profile.tasks
@@ -83,9 +143,12 @@ export async function chat(
       const blocked = tasks.filter((t) => t.status === 'Blocked')
       const needed = new Set(blocked.flatMap((t) => t.needs.map((n) => n.id)))
       tasks = tasks.filter((t) => blocked.includes(t) || needed.has(t.id))
-    } else if (/who owns/i.test(question) && topic)
-      tasks = tasks.filter(
-        (t) => t.templateId === topic || t.title.toLowerCase().includes(topic)
+    } else if (/who owns/i.test(question))
+      tasks = tasks.filter((t) =>
+        t.title
+          .toLowerCase()
+          .split(/\s+/)
+          .some((w) => w.length > 3 && question.toLowerCase().includes(w))
       )
     else tasks = tasks.filter((t) => t.required && t.status !== 'Complete')
     evidence = tasks.map((t) => ({
@@ -120,7 +183,7 @@ export async function chat(
       question.toLowerCase().includes(location.toLowerCase())
     )
     if (
-      topic === 'office' &&
+      /office|address/i.test(question) &&
       requestedOffice &&
       requestedOffice !== profile.location
     ) {
@@ -135,8 +198,7 @@ export async function chat(
         true
       )
     }
-    const rows =
-      await db.$queryRaw`SELECT id,title,body,version FROM "Policy" WHERE approved AND ("job" IS NULL OR "job"=${profile.job}) AND ("location" IS NULL OR "location"=${profile.location}) AND to_tsvector('english',title || ' ' || body) @@ plainto_tsquery('english',${topic}) ORDER BY ts_rank(to_tsvector('english',title || ' ' || body),plainto_tsquery('english',${topic})) DESC,id LIMIT 2`
+    const rows = await retrieve(db, profile, question)
     evidence.push(
       ...rows.map((p) => ({
         id: 'policy:' + p.id,
@@ -150,7 +212,9 @@ export async function chat(
     if (question.trim().split(/\s+/).length < 3)
       return reply(
         'Are you asking about checklist progress, a blocker, or an onboarding policy?',
-        'clarify'
+        'clarify',
+        [],
+        true
       )
     return reply(
       'I could not find an approved passage for that question. Would you like HR to follow up?',
@@ -187,6 +251,13 @@ export async function chat(
         deadline,
       ])
     )
+    if (answer.escalate && !answer.evidenceIds.length)
+      return reply(
+        'The available evidence does not answer that question. Would you like HR to follow up?',
+        'unsupported',
+        [],
+        true
+      )
     if (
       !answer.evidenceIds.length ||
       answer.evidenceIds.some((id) => !evidence.some((e) => e.id === id))

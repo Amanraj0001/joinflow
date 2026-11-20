@@ -7,7 +7,7 @@ export default defineConfig({
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
   },
   webServer: {
-    command: 'node server/index.js',
+    command: 'node apps/api/src/index.js',
     url: process.env.APP_ORIGIN + '/api/health',
     reuseExistingServer: false,
   },

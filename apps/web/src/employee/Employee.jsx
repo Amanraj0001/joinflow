@@ -1,7 +1,6 @@
+import { isLate } from '../shared/Forms'
 import React, { useState } from 'react'
-import { Chat } from './chat'
-import { Handoffs } from './handoffs'
-import { History, Pill } from './shared'
+import { Pill } from '../shared/ui.jsx'
 import {
   ClipboardList,
   Compass,
@@ -10,16 +9,15 @@ import {
   ChevronRight,
   Check,
 } from 'lucide-react'
-export function Employee({ profile, tab, act, busy }) {
-  const [filter, setFilter] = useState('All'),
+export function Employee({ profile, initialFilter, act, busy }) {
+  const [filter, setFilter] = useState(initialFilter || 'All'),
     [open, setOpen] = useState(null)
   const { tasks, readiness } = profile,
     next = tasks.find((t) => t.id === profile.next)
-  if (tab === 'Assistant') return <Chat />
-  if (tab === 'HR replies') return <Handoffs items={profile.handoffs} />
-  if (tab === 'Activity') return <History events={profile.events} />
   const blocked = tasks.filter((t) => t.status === 'Blocked')
   const visibleTasks = tasks.filter((t) => {
+    if (filter === 'Pending') return t.status !== 'Complete'
+    if (filter === 'Overdue') return isLate(t)
     if (filter === 'Day one') return readiness.remaining.includes(t.id)
     return filter === 'All' || filter === t.status
   })
@@ -52,7 +50,15 @@ export function Employee({ profile, tab, act, busy }) {
             <span className="count">{tasks.length}</span>
           </div>
           <div className="tabs">
-            {['All', 'Day one', 'Available', 'Blocked', 'Complete'].map((f) => (
+            {[
+              'All',
+              'Day one',
+              'Available',
+              'Blocked',
+              'Complete',
+              'Pending',
+              'Overdue',
+            ].map((f) => (
               <button
                 className={filter === f ? 'active' : ''}
                 aria-pressed={filter === f}

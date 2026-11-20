@@ -1,11 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-.handoff { padding: 16px 0; border-bottom: 1px solid #dce1d6; overflow-wrap: anywhere; }
-.handoff p { white-space: pre-wrap; }
-.handoff textarea { display: block; width: 100%; margin: 6px 0 10px; padding: 10px; border: 1px solid #cbd4c8; border-radius: 7px; }
-.handoff form, .handoff blockquote { margin-top: 12px; }
-.handoff blockquote { border-left: 3px solid #9bb688; padding-left: 12px; }
+.handoff {
+  padding: 16px 0;
+  border-bottom: 1px solid #dce1d6;
+  overflow-wrap: anywhere;
+}
+.handoff p {
+  white-space: pre-wrap;
+}
+.handoff textarea {
+  display: block;
+  width: 100%;
+  margin: 6px 0 10px;
+  padding: 10px;
+  border: 1px solid #cbd4c8;
+  border-radius: 7px;
+}
+.handoff form,
+.handoff blockquote {
+  margin-top: 12px;
+}
+.handoff blockquote {
+  border-left: 3px solid #9bb688;
+  padding-left: 12px;
+}
 :root {
   font-family: 'Inter', 'Segoe UI', sans-serif;
   color: #203a31;
@@ -746,5 +765,69 @@ fieldset {
   }
   .cover .brand {
     font-size: 1.25rem;
+  }
+}
+
+.portalform {
+  margin: 16px 0;
+  max-width: 720px;
+}
+.portalform textarea {
+  display: block;
+  width: 100%;
+  min-height: 75px;
+  border: 1px solid #bdcbbd;
+  background: white;
+  padding: 10px;
+  border-radius: 6px;
+}
+.portalform .primary,
+.panel > button {
+  margin: 10px 0;
+}
+.panel details {
+  padding: 12px 0;
+  border-bottom: 1px solid #dde4da;
+}
+.panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.stats > button {
+  background: white;
+  border: 1px solid #d9e0d4;
+  border-radius: 10px;
+  padding: 18px;
+  flex: 1;
+  text-align: left;
+}
+.portalstats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  margin-bottom: 18px;
+}
+.longtext {
+  white-space: pre-wrap;
+  max-height: 250px;
+  overflow: auto;
+}
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+@media (max-width: 700px) {
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+  .sidebar nav {
+    overflow-x: auto;
+    max-width: calc(100vw - 32px);
+  }
+  .sidebar nav button {
+    white-space: nowrap;
+    flex: none;
   }
 }

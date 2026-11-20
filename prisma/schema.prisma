@@ -8,33 +8,46 @@ datasource db {
 }
 
 model User {
-  id      String     @id @default(cuid())
-  email   String     @unique
-  name    String
-  hash    String
-  role    String
-  profile Employee?
-  team    Employee[] @relation("manager")
-  owned   Task[]
-  events  Audit[]
+  department     String     @default("People")
+  verified       Boolean    @default(true)
+  sessionVersion Int        @default(0)
+  resetHash      String?    @unique
+  resetExpires   DateTime?
+  id             String     @id @default(cuid())
+  email          String     @unique
+  name           String
+  hash           String
+  role           String
+  profile        Employee?
+  team           Employee[] @relation("manager")
+  owned          Task[]
+  events         Audit[]
 }
 
 model Employee {
-  id        String    @id @default(cuid())
-  userId    String    @unique
-  user      User      @relation(fields: [userId], references: [id])
-  managerId String
-  manager   User      @relation("manager", fields: [managerId], references: [id])
-  job       String
-  location  String
-  startDate DateTime
-  version   Int       @default(1)
-  tasks     Task[]
-  events    Audit[]
-  handoffs  Handoff[]
+  personalEmail String?
+  department    String       @default("General")
+  plan          String       @default("Approved")
+  issues        Issue[]
+  documents     Submission[]
+  notices       Notice[]
+  messages      Message[]
+  id            String       @id @default(cuid())
+  userId        String       @unique
+  user          User         @relation(fields: [userId], references: [id])
+  managerId     String
+  manager       User         @relation("manager", fields: [managerId], references: [id])
+  job           String
+  location      String
+  startDate     DateTime
+  version       Int          @default(1)
+  tasks         Task[]
+  events        Audit[]
+  handoffs      Handoff[]
 }
 
 model Template {
+  custom        Boolean      @default(false)
   id            String       @id
   title         String
   description   String
@@ -59,6 +72,13 @@ model Dependency {
 }
 
 model Task {
+  confidence  Float?
+  review      String    @default("Approved")
+  due         DateTime?
+  detail      String?
+  department  String    @default("People")
+  source      String    @default("Rule")
+  policyRef   String?
   id          String    @id @default(cuid())
   employeeId  String
   employee    Employee  @relation(fields: [employeeId], references: [id])
@@ -82,24 +102,31 @@ model Approval {
 }
 
 model Policy {
-  id       String  @id
-  title    String
-  body     String
-  job      String?
-  location String?
-  approved Boolean
-  version  Int
+  sourceText String?
+  ownerId    String?
+  department String?
+  processing String  @default("Ready")
+  chunks     Json?
+  sourcePdf  Bytes?
+  archived   Boolean @default(false)
+  id         String  @id
+  title      String
+  body       String
+  job        String?
+  location   String?
+  approved   Boolean
+  version    Int
 }
 
 model Handoff {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
   question   String
   answer     String?
   answeredBy String?
   answeredAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
 
 model Audit {
@@ -112,4 +139,72 @@ model Audit {
   createdAt  DateTime @default(now())
 
   @@index([employeeId, createdAt])
+}
+
+model JobRole {
+  name  String   @id
+  steps String[]
+}
+
+model Submission {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  kind       String
+  filename   String
+  bytes      Bytes
+  mime       String
+  status     String   @default("Pending Review")
+  reason     String?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, kind])
+}
+
+model Issue {
+  triage      Json?
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  category    String
+  description String
+  department  String
+  priority    String
+  status      String   @default("Open")
+  updates     Json     @default("[]")
+  createdAt   DateTime @default(now())
+}
+
+model Message {
+  hrId       String
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  senderId   String
+  senderName String
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId, createdAt])
+}
+
+model Notice {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  key        String
+  body       String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, key])
+}
+
+model PolicySuggestion {
+  id        String   @id @default(cuid())
+  policyId  String
+  author    String
+  body      String
+  status    String   @default("Pending")
+  createdAt DateTime @default(now())
 }

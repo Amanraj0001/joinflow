@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "JoinFlow API",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "servers": [
     {
@@ -36,6 +36,9 @@
             "type": "string"
           },
           "role": {
+            "type": "string"
+          },
+          "department": {
             "type": "string"
           }
         },
@@ -141,6 +144,44 @@
               ],
               "additionalProperties": false
             }
+          },
+          "review": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policyRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "department": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
           }
         },
         "required": [
@@ -270,6 +311,22 @@
           },
           "next": {
             "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "string"
+          },
+          "personalEmail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -332,6 +389,281 @@
           "answeredBy"
         ],
         "additionalProperties": false
+      },
+      "Submission": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "employeeId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "employeeId",
+          "kind",
+          "filename",
+          "status",
+          "reason",
+          "updatedAt"
+        ]
+      },
+      "Issue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "employeeId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "author": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "author",
+                "body",
+                "at"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "triage": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "employeeId",
+          "category",
+          "description",
+          "department",
+          "priority",
+          "status",
+          "updates",
+          "createdAt",
+          "triage"
+        ]
+      },
+      "Notice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "employeeId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "employeeId",
+          "key",
+          "body",
+          "read",
+          "createdAt"
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "employeeId": {
+            "type": "string"
+          },
+          "hrId": {
+            "type": "string"
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "employeeId",
+          "hrId",
+          "senderId",
+          "senderName",
+          "body",
+          "createdAt"
+        ]
+      },
+      "JobRole": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "steps"
+        ]
+      },
+      "Policy": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "processing": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "ownerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "processing",
+          "version",
+          "ownerId",
+          "job",
+          "location",
+          "department"
+        ]
       }
     }
   },
@@ -561,6 +893,15 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "sessionVersion": {
+                      "type": "integer"
+                    },
+                    "department": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -634,10 +975,7 @@
                     "type": "string"
                   },
                   "job": {
-                    "enum": [
-                      "Engineering",
-                      "Operations"
-                    ]
+                    "type": "string"
                   },
                   "location": {
                     "type": "string",
@@ -645,16 +983,24 @@
                       "London",
                       "Austin"
                     ]
+                  },
+                  "personalEmail": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "department": {
+                    "type": "string"
                   }
                 },
                 "required": [
                   "name",
                   "email",
-                  "password",
                   "managerId",
                   "startDate",
                   "job",
-                  "location"
+                  "location",
+                  "department",
+                  "personalEmail"
                 ],
                 "additionalProperties": false
               }
@@ -693,6 +1039,25 @@
                     },
                     "version": {
                       "type": "integer"
+                    },
+                    "department": {
+                      "type": "string"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "personalEmail": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "delivered": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -859,6 +1224,64 @@
                       "items": {
                         "$ref": "#/components/schemas/Handoff"
                       }
+                    },
+                    "department": {
+                      "type": "string"
+                    },
+                    "plan": {
+                      "type": "string"
+                    },
+                    "personalEmail": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "requiredDocuments": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Submission"
+                      }
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Issue"
+                      }
+                    },
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Notice"
+                      }
+                    },
+                    "contacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -931,6 +1354,48 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/Handoff"
+                      }
+                    },
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/JobRole"
+                      }
+                    },
+                    "registrations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    },
+                    "suggestions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "staff": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    },
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Submission"
+                      }
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Issue"
                       }
                     }
                   },
@@ -1768,6 +2233,1857 @@
                   ],
                   "additionalProperties": false
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Request manager verification for staff signup",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "enum": [
+                      "HR",
+                      "Manager"
+                    ]
+                  },
+                  "department": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "password",
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/forgot": {
+      "post": {
+        "summary": "Email an employee recovery link",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/auth/reset": {
+      "post": {
+        "summary": "Consume a single-use token and revoke old sessions",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/registrations/{id}": {
+      "post": {
+        "summary": "Verify or reject a staff registration (manager)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "enum": [
+                      "Approve",
+                      "Reject"
+                    ]
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/{id}/invite": {
+      "post": {
+        "summary": "Resend account setup email (HR)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/employees/{id}/profile": {
+      "post": {
+        "summary": "Update permitted employee profile fields (HR)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "department": {
+                    "type": "string"
+                  },
+                  "personalEmail": {
+                    "type": "string"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "name",
+                  "department",
+                  "personalEmail",
+                  "startDate"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles": {
+      "post": {
+        "summary": "Create a job role with role-specific steps (manager)",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRole"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobRole"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plans/steps": {
+      "post": {
+        "summary": "Add a draft step to an employee or all current hires (HR)",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "employeeId": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "department": {
+                    "type": "string"
+                  },
+                  "due": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "employeeId",
+                  "title",
+                  "description",
+                  "department",
+                  "due"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plans/{id}/steps/{task}": {
+      "post": {
+        "summary": "Review, edit or reject a draft assignment (HR)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "task",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "detail": {
+                    "type": "string"
+                  },
+                  "ownerId": {
+                    "type": "string"
+                  },
+                  "review": {
+                    "type": "string"
+                  },
+                  "due": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "detail",
+                  "ownerId",
+                  "review",
+                  "due"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plans/{id}/approve": {
+      "post": {
+        "summary": "Activate the reviewed plan at the current version (HR)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents": {
+      "post": {
+        "summary": "Upload a private PDF for a required document (employee)",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string"
+                  },
+                  "filename": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "filename",
+                  "file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/{id}/download": {
+      "get": {
+        "summary": "Download your submission or review as HR",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private file",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/{id}/review": {
+      "post": {
+        "summary": "Approve or reject the pending submission (HR)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "Approved",
+                      "Rejected"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "status",
+                  "updatedAt"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues": {
+      "post": {
+        "summary": "Raise an issue in your own profile (employee)",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "category",
+                  "description"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}/update": {
+      "post": {
+        "summary": "Route or respond to an issue (HR or responsible department manager)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "department": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "department",
+                  "status",
+                  "body"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "summary": "Mark your notification as read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/{id}": {
+      "get": {
+        "summary": "Read your private thread with the selected HR representative or employee",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Send a message in your private thread",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "body"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/policies": {
+      "get": {
+        "summary": "List current policy sources and processing status (staff)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Policy"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Index a new text or PDF policy (manager)",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "processing": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "processing"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "pdf": {
+                    "type": "string"
+                  },
+                  "department": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "job": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "enum": [
+                      "append",
+                      "replace",
+                      "reindex"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/policies/{id}/edit": {
+      "post": {
+        "summary": "Append, replace or reindex your policy (manager)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "processing": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "processing"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "pdf": {
+                    "type": "string"
+                  },
+                  "department": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "job": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "enum": [
+                      "append",
+                      "replace",
+                      "reindex"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/policies/{id}/remove": {
+      "post": {
+        "summary": "Archive your policy at its reviewed version (manager)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/policies/{id}/suggest": {
+      "post": {
+        "summary": "Submit a policy amendment for manager review (HR)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "body"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/suggestions/{id}/review": {
+      "post": {
+        "summary": "Record the policy owner’s review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "Reviewed",
+                      "Declined"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
               }
             }
           }

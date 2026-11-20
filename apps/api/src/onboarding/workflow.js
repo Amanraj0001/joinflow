@@ -6,19 +6,31 @@ export class HttpError extends Error {
 }
 export function eligible(t, profile) {
   return (
+    !t.custom &&
     (!t.job || t.job === profile.job) &&
     (!t.location || t.location === profile.location)
   )
 }
-export const safeUser = { id: true, name: true, role: true, email: true }
-export async function checklist(db, id) {
+export const safeUser = {
+  id: true,
+  name: true,
+  role: true,
+  email: true,
+  department: true,
+}
+export async function checklist(db, id, includeDraft = false) {
   const profile = await db.employee.findUniqueOrThrow({
     where: { id },
     include: {
       user: { select: safeUser },
       manager: { select: safeUser },
       tasks: {
-        where: { active: true },
+        where: {
+          active: true,
+          ...(includeDraft
+            ? {}
+            : { review: 'Approved', employee: { plan: 'Approved' } }),
+        },
         include: {
           template: { include: { prerequisites: true } },
           owner: { select: safeUser },
@@ -38,17 +50,26 @@ export async function checklist(db, id) {
       .map((d) => profile.tasks.find((p) => p.templateId === d.parentId))
       .filter((p) => p && !p.completedAt)
       .map((p) => ({ id: p.id, title: p.template.title, owner: p.owner.name }))
-    const status = t.completedAt
-      ? 'Complete'
-      : needs.length || t.approval?.decision === 'declined'
-        ? 'Blocked'
-        : 'Available'
+    const status =
+      t.review !== 'Approved'
+        ? t.review
+        : t.completedAt
+          ? 'Complete'
+          : needs.length || t.approval?.decision === 'declined'
+            ? 'Blocked'
+            : 'Available'
     return {
       id: t.id,
       templateId: t.templateId,
       title: t.template.title,
       category: t.template.category,
-      description: t.template.description,
+      description: t.detail || t.template.description,
+      due: t.due,
+      department: t.department,
+      source: t.source,
+      policyRef: t.policyRef,
+      confidence: t.confidence,
+      review: t.review,
       required: t.template.required,
       owner: t.owner,
       approval: t.approval,
@@ -64,7 +85,7 @@ export async function checklist(db, id) {
     readiness: {
       total: required.length,
       complete: required.length - remaining.length,
-      ready: remaining.length === 0,
+      ready: profile.plan === 'Approved' && remaining.length === 0,
       remaining: remaining.map((t) => t.id),
     },
     next: tasks.find(
@@ -88,7 +109,7 @@ export async function preview(db, employee, location) {
     const active = tasks.find((a) => a.templateId === t.id)
     if (active)
       result[
-        active.completedAt || eligible(t, { ...employee, location })
+        active.completedAt || t.custom || eligible(t, { ...employee, location })
           ? 'retained'
           : 'removed'
       ].push(t)
@@ -96,7 +117,12 @@ export async function preview(db, employee, location) {
   }
   return result
 }
-export async function assign(db, employee, templates) {
+export async function assign(
+  db,
+  employee,
+  templates,
+  review = employee.plan === 'Draft' ? 'Draft' : 'Approved'
+) {
   for (const t of templates) {
     const task = await db.task.upsert({
       where: {
@@ -106,6 +132,14 @@ export async function assign(db, employee, templates) {
       create: {
         employeeId: employee.id,
         templateId: t.id,
+        review,
+        due: employee.startDate,
+        department:
+          t.category === 'Equipment'
+            ? 'IT'
+            : t.category === 'Payroll'
+              ? 'Finance'
+              : 'People',
         ownerId:
           t.ownerRole === 'Manager' ? employee.managerId : employee.userId,
       },

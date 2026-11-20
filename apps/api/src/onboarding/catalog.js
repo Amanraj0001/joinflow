@@ -11,7 +11,7 @@ export const templates = [
     'identity',
     'Review identity documents',
     'Documents',
-    'Review the fictional identity checklist and confirm your details. Do not upload personal documents.',
+    'Review the identity checklist and submit the required files through My Documents.',
   ],
   [
     'laptop',

@@ -2,8 +2,8 @@ import { beforeAll, afterAll, it, expect } from 'vitest'
 import { PrismaClient } from '@prisma/client'
 import request from 'supertest'
 import { readFileSync } from 'node:fs'
-import { createApp } from '../server/app.js'
-import { chat } from '../server/chat.js'
+import { createApp } from '../apps/api/src/app.js'
+import { chat } from '../apps/api/src/knowledge/chat.js'
 const db = new PrismaClient(),
   app = createApp(db)
 const origin = process.env.APP_ORIGIN
@@ -173,6 +173,8 @@ it('preserves completed location work and rejects an outdated preview', async ()
 it('creates a hire and delivers only explicitly submitted handoffs to HR', async () => {
   const data = {
     name: 'Test Hire',
+    department: 'Operations',
+    personalEmail: 'personal@example.test',
     email: 'test@joinflow.example',
     password: process.env.DEMO_PASSWORD,
     job: 'Operations',
@@ -183,7 +185,18 @@ it('creates a hire and delivers only explicitly submitted handoffs to HR', async
   await post(hr, '/employees', data).expect(201)
   await post(hr, '/employees', data).expect(409)
   const hire = await login('test')
-  expect((await hire.get('/api/me/checklist')).body.tasks).toHaveLength(10)
+  expect((await hire.get('/api/me/checklist')).body.tasks).toHaveLength(0)
+  const draft = (await hr.get('/api/team')).body.people.find(
+    (p) => p.user.email === data.email
+  )
+  expect(draft.tasks.some((t) => t.source === 'Role')).toBe(true)
+  await post(hire, '/tasks/' + draft.tasks[0].id + '/complete', {}).expect(404)
+  await post(hr, '/plans/' + draft.id + '/approve', {
+    version: draft.version,
+  }).expect(200)
+  expect(
+    (await hire.get('/api/me/checklist')).body.tasks.length
+  ).toBeGreaterThan(10)
   expect((await hr.get('/api/team')).body.handoffs).toHaveLength(0)
   await post(hire, '/handoffs', { question: 'Is relocation covered?' }).expect(
     201
@@ -193,11 +206,14 @@ it('creates a hire and delivers only explicitly submitted handoffs to HR', async
   const answer = { answer: 'I will send you the relocation guide.' }
   await post(maya, reply, answer).expect(403)
   await post(manager, reply, answer).expect(403)
-  await post(hr, reply, {answer:' '}).expect(400)
+  await post(hr, reply, { answer: ' ' }).expect(400)
   await post(hr, reply, answer).expect(200)
-  await post(hr, reply, {answer:'Second response'}).expect(409)
+  await post(hr, reply, { answer: 'Second response' }).expect(409)
   expect((await hire.get('/api/me/checklist')).body.handoffs[0]).toMatchObject({
-    ...answer, id:item.id, answeredBy:'Ellis Morgan', answeredAt:expect.any(String)
+    ...answer,
+    id: item.id,
+    answeredBy: 'Ellis Morgan',
+    answeredAt: expect.any(String),
   })
   expect((await maya.get('/api/me/checklist')).body.handoffs).toEqual([])
   expect((await manager.get('/api/team')).body.handoffs).toEqual([])

@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
-import { templates, policies } from '../server/catalog.js'
-import { assign, eligible } from '../server/workflow.js'
+import { templates, policies } from '../apps/api/src/onboarding/catalog.js'
+import { assign, eligible } from '../apps/api/src/onboarding/workflow.js'
 const db = new PrismaClient()
 try {
   const password = process.env.DEMO_PASSWORD
@@ -15,7 +15,13 @@ try {
         return tx.user.upsert({
           where: { email },
           update: {},
-          create: { name, email, role, hash },
+          create: {
+            name,
+            email,
+            role,
+            hash,
+            department: role === 'Manager' ? 'IT' : 'People',
+          },
         })
       }
       const manager = await account('Sam Rivera', 'sam', 'Manager')
@@ -33,7 +39,35 @@ try {
           create: { childId, parentId },
         })
       for (const p of policies)
-        await tx.policy.upsert({ where: { id: p.id }, update: p, create: p })
+        await tx.policy.upsert({ where: { id: p.id }, update: {}, create: p })
+      const roleTemplates = {}
+      for (const role of await tx.jobRole.findMany({
+        where: { name: { in: ['Engineering', 'Operations'] } },
+      })) {
+        roleTemplates[role.name] = []
+        for (const title of role.steps) {
+          const existing = await tx.template.findFirst({
+            where: { job: role.name, title, custom: true },
+          })
+          roleTemplates[role.name].push(
+            existing ||
+              (await tx.template.create({
+                data: {
+                  id:
+                    'demo-' + role.name + '-' + roleTemplates[role.name].length,
+                  title,
+                  description: title + ' for the ' + role.name + ' role.',
+                  category: role.name,
+                  ownerRole: 'Employee',
+                  required: false,
+                  position: 100,
+                  job: role.name,
+                  custom: true,
+                },
+              }))
+          )
+        }
+      }
       for (const [name, slug, job, location] of [
         ['Alex Park', 'alex', 'Engineering', 'London'],
         ['Maya Chen', 'maya', 'Operations', 'Austin'],
@@ -47,15 +81,15 @@ try {
             userId: user.id,
             managerId: manager.id,
             job,
+            department: job,
             location,
             startDate: new Date('2027-01-11T12:00:00Z'),
           },
         })
-        await assign(
-          tx,
-          employee,
-          templates.filter((t) => eligible(t, employee))
-        )
+        await assign(tx, employee, [
+          ...templates.filter((t) => eligible(t, employee)),
+          ...(roleTemplates[job] || []),
+        ])
         await tx.task.updateMany({
           where: { employeeId: employee.id, templateId: 'welcome' },
           data: { completedAt: new Date() },

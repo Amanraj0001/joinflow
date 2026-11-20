@@ -1,5 +1,5 @@
 export default {
-  content: ['./index.html', './client/**/*.{js,jsx}'],
+  content: ['./index.html', './apps/web/src/**/*.{js,jsx}'],
   theme: { extend: {} },
   plugins: [],
 }

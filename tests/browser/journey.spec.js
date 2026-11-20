@@ -12,10 +12,15 @@ test('an employee sees the laptop approval unlock setup, cites a policy and cont
   browser,
 }) => {
   await login(page, 'Employee')
+  await page
+    .getByRole('button', { name: 'My Tasks', exact: true })
+    .first()
+    .click()
   const setup = page.getByRole('button', { name: /Set up your workstation/ })
   await expect(setup).toContainText('Blocked')
   const mgr = await browser.newPage()
   await login(mgr, 'Manager')
+  await mgr.getByRole('button', { name: 'Decisions', exact: true }).click()
   await mgr
     .locator('.decision')
     .filter({ hasText: 'Approve laptop request' })
@@ -30,7 +35,7 @@ test('an employee sees the laptop approval unlock setup, cites a policy and cont
   ).toHaveCount(0)
   await page.getByRole('button', { name: 'Refresh' }).click()
   await expect(setup).toContainText('Available')
-  await page.getByRole('button', { name: 'Assistant' }).click()
+  await page.getByRole('button', { name: 'AI Assistant' }).click()
   await page.getByRole('button', { name: 'When do benefits begin?' }).click()
   await page.getByText('Benefits enrollment', { exact: true }).click()
   await expect(page.locator('details[open]')).toContainText('start date')
@@ -46,12 +51,18 @@ test('an employee sees the laptop approval unlock setup, cites a policy and cont
   await login(hr, 'HR')
   await hr.getByRole('button', { name: 'HR inbox' }).click()
   await expect(hr.getByText('Is relocation covered?')).toBeVisible()
-  await hr.getByLabel('Reply to employee').fill('I will send you the relocation guide.')
-  await hr.getByRole('button', {name:'Send reply'}).click()
-  await expect(hr.getByText('I will send you the relocation guide.')).toBeVisible()
-  await page.getByRole('button', {name:'HR replies'}).click()
-  await expect(page.getByText('I will send you the relocation guide.')).toBeVisible()
-  await hr.getByRole('button', { name: 'Overview' }).click()
+  await hr
+    .getByLabel('Reply to employee')
+    .fill('I will send you the relocation guide.')
+  await hr.getByRole('button', { name: 'Send reply' }).click()
+  await expect(
+    hr.getByText('I will send you the relocation guide.')
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Help & Support' }).click()
+  await expect(
+    page.getByText('I will send you the relocation guide.')
+  ).toBeVisible()
+  await hr.getByRole('button', { name: 'Employees', exact: true }).click()
   await hr.getByRole('button', { name: 'Preview move to Austin' }).click()
   await hr.getByRole('button', { name: 'Cancel' }).click()
   await expect(
@@ -68,26 +79,96 @@ test('HR creates an operations hire and applies a reviewed office move', async (
   await page.getByRole('button', { name: 'New hire' }).click()
   await page.getByLabel('Full name').fill('Robin West')
   await page.getByLabel('Work email').fill('robin@joinflow.example')
-  await page.getByLabel('Initial password').fill('DemoAccount123!')
+  await page.getByLabel('Personal email').fill('robin@example.test')
+  await page.getByLabel('Department').fill('Operations')
   await page.getByLabel('Start date').fill('2027-02-15')
   await page.getByLabel('Job role').selectOption('Operations')
   await page.getByRole('button', { name: 'Create checklist' }).click()
   await expect(
-    page.getByRole('heading', { name: 'People overview' })
+    page.getByRole('heading', { name: 'Review onboarding plan' })
   ).toBeVisible()
+  await page.getByRole('button', { name: 'Employees', exact: true }).click()
   await page.getByRole('combobox').selectOption({ label: 'Robin West' })
   await expect(
-    page.getByText('Review operations playbook', { exact: true })
+    page.getByText(/Review operations playbook · Draft/)
   ).toBeVisible()
   await page.getByRole('button', { name: 'Preview move to Austin' }).click()
   await page.getByRole('button', { name: 'Apply change' }).click()
   await expect(
-    page.getByText('Collect Austin access pass', { exact: true })
+    page.getByText(/Collect Austin access pass · Draft/)
   ).toBeVisible()
   await expect(
-    page.getByText('Collect London access pass', { exact: true })
+    page.getByText(/Collect London access pass · Draft/)
   ).toHaveCount(0)
+  await page.getByRole('button', { name: 'History', exact: true }).click()
   await expect(
     page.getByText('Changed location from London to Austin.')
   ).toBeVisible()
+})
+
+test('manager publishes a new policy, employee retrieves it and dashboard links support Back', async ({
+  page,
+  browser,
+}) => {
+  await login(page, 'Manager')
+  await page.getByRole('button', { name: 'Active hires' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Active', exact: true })
+  ).toBeVisible()
+  await page.getByRole('button', { name: '← Back', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Active hires' })).toBeVisible()
+  await page.getByRole('button', { name: 'Policies', exact: true }).click()
+  const create = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'New policy' }) })
+  await create.getByLabel('Policy title').fill('Bicycle storage')
+  await create
+    .getByLabel('Policy text')
+    .fill('Store bicycles in the orchid courtyard.')
+  await create.getByRole('button', { name: 'Add policy' }).click()
+  await expect(
+    page.locator('summary').filter({ hasText: 'Bicycle storage' })
+  ).toContainText('Ready')
+  const employee = await browser.newPage()
+  await login(employee, 'Employee')
+  await employee
+    .getByRole('navigation')
+    .getByRole('button', { name: 'AI Assistant' })
+    .click()
+  await employee.getByLabel('Ask a question').fill('Where is bicycle storage?')
+  await employee
+    .getByRole('button', { name: 'Send question', exact: true })
+    .click()
+  await expect(employee.locator('.response')).toContainText('orchid courtyard')
+  await employee.close()
+})
+test('employee submits a document and sees HR feedback in the portal', async ({
+  page,
+  browser,
+}) => {
+  await login(page, 'Employee')
+  await page.getByRole('button', { name: 'My Documents' }).click()
+  const offer = page.locator('article').filter({ hasText: 'Signed offer' })
+  await offer.getByLabel('PDF, up to 5 MB').setInputFiles({
+    name: 'offer.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.4 synthetic test'),
+  })
+  await offer.getByRole('button', { name: 'Submit document' }).click()
+  await expect(offer).toContainText('Pending Review')
+  const hr = await browser.newPage()
+  await login(hr, 'HR')
+  await hr.getByRole('button', { name: 'Documents', exact: true }).click()
+  await hr.getByLabel('Decision').selectOption('Rejected')
+  await hr
+    .getByLabel('Reason (required for rejection)')
+    .fill('Please upload the signed copy.')
+  await hr.getByRole('button', { name: 'Submit review' }).click()
+  await expect(hr.locator('.handoff')).toContainText('Rejected')
+  await page.getByRole('button', { name: 'Refresh' }).click()
+  await expect(offer).toContainText('Please upload the signed copy.')
+  await expect(
+    offer.getByRole('button', { name: 'Replace document' })
+  ).toBeVisible()
+  await hr.close()
 })

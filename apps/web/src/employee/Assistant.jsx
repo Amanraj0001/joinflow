@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { api } from './api'
-import { Notice } from './shared'
+import { api } from '../shared/api.js'
+import { Notice } from '../shared/ui.jsx'
 import { Sparkles, ArrowUpRight, ArrowRight, BookOpen } from 'lucide-react'
 export function Chat() {
   const [question, setQuestion] = useState(''),
