@@ -70,26 +70,55 @@ export function onboardingRoutes(app, db, role) {
         await assign(
           tx,
           profile,
-          (await tx.template.findMany()).filter((t) => eligible(t, profile))
+          (await tx.template.findMany()).filter((t) => eligible(t, profile)),
         )
         for (const step of steps) await addStep(tx, profile, step)
         return record(
           tx,
           profile.id,
           req.user.id,
-          'Created the draft onboarding checklist.'
+          'Created the draft onboarding checklist.',
         )
       },
-      { timeout: 30000 }
+      { timeout: 30000 },
     )
     const delivered = await sendAccess(
       db,
       { id: employee.userId, email },
       personalEmail,
-      true
+      true,
     )
     res.status(201).json({ ...employee, delivered })
   })
+  app.post(
+    '/api/tasks/:id/start',
+    role('Employee', 'Manager', 'HR'),
+    async (req, res) => {
+      await db.$transaction(async (tx) => {
+        const row = await tx.task.findFirstOrThrow({
+          where: { id: req.params.id, ownerId: req.user.id, approval: null },
+        })
+        await lockProfile(tx, row.employeeId)
+        const t = (await checklist(tx, row.employeeId)).tasks.find(
+          (t) => t.id === row.id,
+        )
+        if (!t || t.status !== 'Available')
+          throw new HttpError(409, 'Task is unavailable.')
+        await tx.task.update({
+          where: { id: t.id },
+          data: { startedAt: new Date() },
+        })
+        await record(
+          tx,
+          row.employeeId,
+          req.user.id,
+          'Started ' + t.title + '.',
+          t.id,
+        )
+      })
+      res.json({ ok: true })
+    },
+  )
   app.post(
     '/api/tasks/:id/complete',
     role('Employee', 'Manager', 'HR'),
@@ -108,12 +137,26 @@ export function onboardingRoutes(app, db, role) {
         if (!owned) throw new HttpError(404, 'Task not found.')
         const employee = await lockProfile(tx, owned.employeeId)
         const task = (await checklist(tx, employee.id)).tasks.find(
-          (t) => t.id === req.params.id && t.owner.id === req.user.id
+          (t) => t.id === req.params.id && t.owner.id === req.user.id,
         )
         if (!task) throw new HttpError(404, 'Task not found.')
         if (task.status === 'Complete') return
-        if (task.status !== 'Available')
+        if (!['Available', 'In progress'].includes(task.status))
           throw new HttpError(409, 'Complete the prerequisites first.')
+        if (
+          task.completionMethod === 'Evidence' &&
+          !(await tx.submission.findFirst({
+            where: {
+              employeeId: employee.id,
+              kind: task.evidenceKind,
+              status: 'Approved',
+            },
+          }))
+        )
+          throw new HttpError(
+            409,
+            'HR must approve the required document first.',
+          )
         await tx.task.update({
           where: { id: task.id },
           data: { completedAt: new Date() },
@@ -122,11 +165,12 @@ export function onboardingRoutes(app, db, role) {
           tx,
           employee.id,
           req.user.id,
-          'Completed ' + task.title + '.'
+          'Completed ' + task.title + '.',
+          task.id,
         )
       })
       res.json({ ok: true })
-    }
+    },
   )
   app.post('/api/approvals/:id/decision', role('Manager'), async (req, res) => {
     const { decision } = z
@@ -148,7 +192,7 @@ export function onboardingRoutes(app, db, role) {
       if (!item) throw new HttpError(404, 'Approval not found.')
       await lockProfile(tx, item.task.employeeId)
       const task = (await checklist(tx, item.task.employeeId)).tasks.find(
-        (t) => t.id === item.task.id
+        (t) => t.id === item.task.id,
       )
       if (!task)
         throw new HttpError(409, 'Checklist changed. Refresh your view.')
@@ -168,7 +212,8 @@ export function onboardingRoutes(app, db, role) {
         tx,
         item.task.employeeId,
         req.user.id,
-        task.title + ' was ' + decision + '.'
+        task.title + ' was ' + decision + '.',
+        task.id,
       )
     })
     res.json({ ok: true })
@@ -181,10 +226,10 @@ export function onboardingRoutes(app, db, role) {
       const { location } = change.parse(req.body)
       res.json(
         await db.$transaction(async (tx) =>
-          preview(tx, await lockProfile(tx, req.params.id), location)
-        )
+          preview(tx, await lockProfile(tx, req.params.id), location),
+        ),
       )
-    }
+    },
   )
   app.post('/api/employees/:id/apply-change', role('HR'), async (req, res) => {
     const { location, version } = change
@@ -195,7 +240,7 @@ export function onboardingRoutes(app, db, role) {
       if (version !== employee.version)
         throw new HttpError(
           409,
-          'The checklist changed. Preview the change again.'
+          'The checklist changed. Preview the change again.',
         )
       if (location === employee.location) return
       const delta = await preview(tx, employee, location)
@@ -215,7 +260,7 @@ export function onboardingRoutes(app, db, role) {
         tx,
         employee.id,
         req.user.id,
-        'Changed location from ' + employee.location + ' to ' + location + '.'
+        'Changed location from ' + employee.location + ' to ' + location + '.',
       )
     })
     res.json({ ok: true })

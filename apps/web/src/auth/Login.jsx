@@ -2,7 +2,7 @@ import { Access } from './Access'
 import React, { useState } from 'react'
 import { api } from '../shared/api.js'
 import { Brand, Notice } from '../shared/ui.jsx'
-import { Compass, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Compass, ArrowRight } from 'lucide-react'
 function Art() {
   return (
     <div className="art" aria-hidden="true">
@@ -76,6 +76,7 @@ export function Login({ refresh }) {
         {mode !== 'login' ? (
           <Access
             mode={mode}
+            role={role}
             back={() => {
               history.replaceState(null, '', location.pathname)
               setMode('login')
@@ -88,8 +89,7 @@ export function Login({ refresh }) {
             </div>
             <h2>Welcome back</h2>
             <p>Sign in to your onboarding workspace.</p>
-            <fieldset>
-              <legend>Demo workspace</legend>
+            <fieldset aria-label="Account role">
               <div className="roles">
                 {Object.keys(demos).map((r) => (
                   <button
@@ -138,14 +138,12 @@ export function Login({ refresh }) {
               <button type="button" onClick={() => setMode('forgot')}>
                 Forgot password?
               </button>
-              <button type="button" onClick={() => setMode('register')}>
-                Request staff access
-              </button>
+              {role !== 'Employee' && (
+                <button type="button" onClick={() => setMode('register')}>
+                  Sign up as {role}
+                </button>
+              )}
             </div>
-            <small className="loginhelp">
-              <ShieldCheck size={16} /> Demo credentials are in the project
-              README.
-            </small>
           </form>
         )}
       </section>

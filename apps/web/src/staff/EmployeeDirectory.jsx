@@ -3,7 +3,7 @@ import { Panel, Field, Form, shortDate } from '../shared/Forms'
 import { Change } from './Team'
 export function EmployeeDirectory({ people, filter, soon, act, busy, hr }) {
   const [search, q] = useState(''),
-    [person, choose] = useState('')
+    [person, choose] = useState(filter || '')
   const list = people.filter(
       (p) =>
         (filter === 'Joining soon'
@@ -16,11 +16,17 @@ export function EmployeeDirectory({ people, filter, soon, act, busy, hr }) {
         [p.user.name, p.department, p.location, p.job]
           .join(' ')
           .toLowerCase()
-          .includes(search.toLowerCase())
+          .includes(search.toLowerCase()),
     ),
     p = list.find((x) => x.id === person) || list[0]
   return (
-    <Panel title={filter || 'Employee directory'}>
+    <Panel
+      title={
+        people.some((p) => p.id === filter)
+          ? 'Employee directory'
+          : filter || 'Employee directory'
+      }
+    >
       <label>
         Search by name, role, department or office
         <input value={search} onChange={(e) => q(e.target.value)} />

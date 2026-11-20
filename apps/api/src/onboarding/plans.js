@@ -23,7 +23,7 @@ export async function suggestions(db, profile, role) {
       profile.location,
       'onboarding training access',
     ].join(' '),
-    'planning'
+    'planning',
   )
   const roleSteps = role.steps.map((title) => ({
     title,
@@ -58,7 +58,7 @@ export async function suggestions(db, profile, role) {
               }),
             ],
           ],
-          { signal: AbortSignal.timeout(10000) }
+          { signal: AbortSignal.timeout(10000) },
         )
       generated = result.tasks
         .filter((t) => rows.some((r) => r.id === t.policyId))
@@ -140,7 +140,7 @@ export function planRoutes(app, db, role) {
           await record(tx, p.id, req.user.id, 'Added draft step: ' + v.title)
         }
       },
-      { timeout: 60000 }
+      { timeout: 60000 },
     )
     res.json({ ok: true })
   })
@@ -150,6 +150,9 @@ export function planRoutes(app, db, role) {
         detail: z.string().trim().min(1).max(1500),
         due: z.iso.date(),
         ownerId: z.string(),
+        evidenceKind: z
+          .enum(['', 'Identity document', 'Signed offer'])
+          .optional(),
         review: z.enum(['Draft', 'Accepted', 'Rejected']),
       })
       .parse(req.body)
@@ -168,7 +171,7 @@ export function planRoutes(app, db, role) {
       if (t.approval && v.ownerId !== p.managerId)
         throw new HttpError(
           409,
-          'This approval belongs to the reporting manager.'
+          'This approval belongs to the reporting manager.',
         )
       const owner = await tx.user.findFirst({
         where: {
@@ -177,6 +180,8 @@ export function planRoutes(app, db, role) {
           OR: [{ id: p.userId }, { id: p.managerId }, { role: 'HR' }],
         },
       })
+      if (t.approval && v.evidenceKind)
+        throw new HttpError(400, 'Manager decisions use the approval workflow.')
       if (!owner) throw new HttpError(400, 'Choose an eligible assignee.')
       await tx.task.update({
         where: { id: t.id },
@@ -186,7 +191,7 @@ export function planRoutes(app, db, role) {
         tx,
         p.id,
         req.user.id,
-        'Reviewed draft step: ' + t.template.title
+        'Reviewed draft step: ' + t.template.title,
       )
     })
     res.json({ ok: true })
@@ -233,7 +238,15 @@ export function planRoutes(app, db, role) {
           startDate: new Date(v.startDate),
         },
       })
-      await tx.user.update({ where: { id: p.userId }, data: { name: v.name, ...(p.personalEmail !== v.personalEmail ? {resetHash:null,resetExpires:null} : {}) } })
+      await tx.user.update({
+        where: { id: p.userId },
+        data: {
+          name: v.name,
+          ...(p.personalEmail !== v.personalEmail
+            ? { resetHash: null, resetExpires: null }
+            : {}),
+        },
+      })
       await record(tx, p.id, req.user.id, 'Updated the employee profile.')
     })
     res.json({ ok: true })

@@ -20,7 +20,7 @@ export function overviewRoutes(app, db, role) {
       orderBy: { user: { name: 'asc' } },
     })
     const people = await Promise.all(
-      ids.map((e) => checklist(db, e.id, req.user.role === 'HR'))
+      ids.map((e) => checklist(db, e.id, req.user.role === 'HR')),
     )
     const managers =
       req.user.role === 'HR'
@@ -53,6 +53,13 @@ export function overviewRoutes(app, db, role) {
     res.json({
       people,
       managers,
+      policyOwners:
+        req.user.role === 'Manager'
+          ? await db.user.findMany({
+              where: { role: 'Manager', verified: true },
+              select: { id: true, name: true },
+            })
+          : [],
       handoffs,
       roles,
       registrations,
@@ -62,6 +69,7 @@ export function overviewRoutes(app, db, role) {
         ? await hrExtras(db)
         : {
             issues: await db.issue.findMany({
+              omit: { attachment: true, internalNotes: true },
               where: { department: req.user.department },
               orderBy: { createdAt: 'desc' },
               include: {

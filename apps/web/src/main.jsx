@@ -34,7 +34,7 @@ function App() {
     history.pushState(
       { joinflow: true },
       '',
-      '#view=' + encodeURIComponent(value)
+      '#view=' + encodeURIComponent(value),
     )
     selectTab(value)
   }
@@ -78,7 +78,7 @@ function App() {
       await refresh()
       if (result.delivered === false)
         setError(
-          'Hire created. Email delivery failed. Check SMTP and resend the setup email from Employees.'
+          'Hire created. Email delivery failed. Check SMTP and resend the setup email from Employees.',
         )
       return result
     } catch (e) {
@@ -95,7 +95,8 @@ function App() {
         <p>Loading workspace…</p>
       </main>
     )
-  if (location.hash.startsWith('#reset=')) return <Login key="reset" refresh={refresh} />
+  if (location.hash.startsWith('#reset='))
+    return <Login key="reset" refresh={refresh} />
   if (!user)
     return error ? (
       <main className="loading">
@@ -141,7 +142,19 @@ function App() {
             'History',
           ]
   const tab = nav.includes(requested.split('|')[0]) ? requested : 'Dashboard'
-  const pageTitle = tab.startsWith('Plans|') ? 'Plans' : tab.replace('|', ' / ')
+  const [page, detail] = tab.split('|')
+  const pageTitle = [
+    'All',
+    'Pending',
+    'Overdue',
+    'Blocked',
+    'Active',
+    'Ready',
+    'Joining soon',
+    'Complete',
+  ].includes(detail)
+    ? page + ' / ' + detail
+    : page
   const icons = {
     Dashboard: LayoutDashboard,
     'AI Assistant': MessageCircle,

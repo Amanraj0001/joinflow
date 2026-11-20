@@ -5,7 +5,7 @@ import unittest
 from fastapi import HTTPException
 from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
-from services.rag.main import Corpus, Source, index, retrieve
+from services.rag.main import Corpus, Source, index, retrieve, ReviewInput, review_document
 
 
 class PolicyIndexTest(unittest.TestCase):
@@ -23,6 +23,9 @@ class PolicyIndexTest(unittest.TestCase):
         pdf = io.BytesIO()
         writer.write(pdf)
         result = index(Source(title="Cycle parking", pdf=base64.b64encode(pdf.getvalue()).decode()))
+        review = review_document(ReviewInput(pdf=base64.b64encode(pdf.getvalue()).decode(),kind="Signed offer",employee_name="Alex Park"))
+        self.assertIn("orchid courtyard", review["excerpt"])
+        self.assertTrue(any("registered name" in item for item in review["observations"]))
         self.assertIn("orchid courtyard", result["text"])
         found = retrieve(Corpus(question="Where do bicycles belong?", documents=[
             {"id": "cycle", "title": "Cycle parking", "version": 1,

@@ -8,6 +8,10 @@ const source = z
     title: z.string().trim().min(1).max(160),
     text: z.string().max(150000).default(''),
     pdf: z.string().max(7000000).optional(),
+    description: z.string().trim().max(2000).optional(),
+    category: optional,
+    effectiveDate: z.union([z.iso.date(), z.literal('')]).optional(),
+    ownerId: z.string().min(1).optional(),
     department: optional,
     job: optional,
     location: optional,
@@ -16,31 +20,31 @@ const source = z
   })
   .strict()
 export function policyRoutes(app, db, role) {
-  app.get('/api/policies', role('Manager', 'HR'), async (req, res) =>
-    res.json(
-      await db.policy.findMany({
+  app.get('/api/policies', role('Manager', 'HR'), async (req, res) => {
+    const [rows, managers] = await Promise.all([
+      db.policy.findMany({
         where: { archived: false },
-        select: {
-          id: true,
-          title: true,
-          version: true,
-          body: true,
-          processing: true,
-          ownerId: true,
-          department: true,
-          job: true,
-          location: true,
-        },
+        omit: { chunks: true, sourcePdf: true, sourceText: true },
         orderBy: { title: 'asc' },
-      })
+      }),
+      db.user.findMany({
+        where: { verified: true, role: 'Manager' },
+        select: { id: true, name: true },
+      }),
+    ])
+    res.json(
+      rows.map((p) => ({
+        ...p,
+        owner: managers.find((m) => m.id === p.ownerId)?.name || 'Unassigned',
+      })),
     )
-  )
-  async function manage(req, res) {
-    const v = source.parse(req.body),
-      id = req.params.id || randomUUID()
-    const old = req.params.id
-      ? await db.policy.findUniqueOrThrow({ where: { id } })
-      : null
+  })
+  async function publish(req, v, id, suggestionId) {
+    const old = id ? await db.policy.findUniqueOrThrow({ where: { id } }) : null
+    const ownerId = v.ownerId || old?.ownerId || req.user.id
+    await db.user.findFirstOrThrow({
+      where: { id: ownerId, role: 'Manager', verified: true },
+    })
     if (old?.ownerId && old.ownerId !== req.user.id)
       throw new HttpError(403, 'Only the owning manager can edit this policy.')
     if (old && (old.archived || old.version !== v.version))
@@ -79,20 +83,56 @@ export function policyRoutes(app, db, role) {
       processing,
       chunks: indexed.chunks,
       approved: processing === 'Ready',
-      ownerId: req.user.id,
+      ownerId,
+      description: v.description ?? old?.description,
+      effectiveDate: v.effectiveDate ?? old?.effectiveDate,
+      category: v.category ?? old?.category,
+      modifiedBy: req.user.name,
       department: v.department || null,
       location: v.location || null,
       job: v.job || null,
     }
-    if (old) {
-      const r = await db.policy.updateMany({
-        where: { id, version: v.version, archived: false },
-        data: { ...data, version: { increment: 1 } },
-      })
-      if (!r.count)
-        throw new HttpError(409, 'Policy changed during processing.')
-    } else await db.policy.create({ data: { ...data, id, version: 1 } })
-    res.json({ id, processing })
+    if (suggestionId && processing !== 'Ready')
+      throw new HttpError(
+        422,
+        'Processing failed. The suggestion is still pending.',
+      )
+    const policyId = id || randomUUID()
+    await db.$transaction(async (tx) => {
+      if (old) {
+        const {
+          sourcePdf,
+          sourceText,
+          chunks,
+          revisions,
+          updatedAt,
+          ...snapshot
+        } = old
+        const r = await tx.policy.updateMany({
+          where: { id, version: v.version, archived: false },
+          data: {
+            ...data,
+            revisions: [
+              ...revisions,
+              { ...snapshot, updatedAt: updatedAt?.toISOString() || null },
+            ],
+            version: { increment: 1 },
+          },
+        })
+        if (!r.count)
+          throw new HttpError(409, 'Policy changed during processing.')
+      } else
+        await tx.policy.create({ data: { ...data, id: policyId, version: 1 } })
+      if (suggestionId)
+        await tx.policySuggestion.update({
+          where: { id: suggestionId, status: 'Pending' },
+          data: { status: 'Approved' },
+        })
+    })
+    return { id: policyId, processing }
+  }
+  async function manage(req, res) {
+    res.json(await publish(req, source.parse(req.body), req.params.id))
   }
   app.post('/api/policies', role('Manager'), manage)
   app.post('/api/policies/:id/edit', role('Manager'), manage)
@@ -110,7 +150,7 @@ export function policyRoutes(app, db, role) {
     if (!r.count)
       throw new HttpError(
         409,
-        'Policy is unavailable or owned by another manager.'
+        'Policy is unavailable or owned by another manager.',
       )
     res.json({ ok: true })
   })
@@ -124,23 +164,39 @@ export function policyRoutes(app, db, role) {
     res.status(201).json(
       await db.policySuggestion.create({
         data: { policyId: req.params.id, author: req.user.name, body },
-      })
+      }),
     )
   })
   app.post('/api/suggestions/:id/review', role('Manager'), async (req, res) => {
     const { status } = z
-      .object({ status: z.enum(['Reviewed', 'Declined']) })
+      .object({ status: z.enum(['Approved', 'Reviewed', 'Declined']) })
       .parse(req.body)
     const s = await db.policySuggestion.findUniqueOrThrow({
       where: { id: req.params.id },
     })
-    await db.policy.findFirstOrThrow({
+    const policy = await db.policy.findFirstOrThrow({
       where: {
+        archived: false,
         id: s.policyId,
         OR: [{ ownerId: null }, { ownerId: req.user.id }],
       },
     })
-    await db.policySuggestion.update({ where: { id: s.id }, data: { status } })
+    if (status === 'Approved') {
+      if (req.body.version !== policy.version)
+        throw new HttpError(409, 'Refresh the policy before publishing.')
+      return res.json(
+        await publish(
+          req,
+          { ...policy, text: s.body, mode: 'append' },
+          policy.id,
+          s.id,
+        ),
+      )
+    }
+    await db.policySuggestion.update({
+      where: { id: s.id, status: 'Pending' },
+      data: { status },
+    })
     res.json({ ok: true })
   })
 }

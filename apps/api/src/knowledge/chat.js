@@ -28,7 +28,7 @@ export async function hostedAnswer(question, evidence, signal) {
         ],
         ['human', JSON.stringify({ question, evidence })],
       ],
-      { signal }
+      { signal },
     )
   return response
 }
@@ -39,18 +39,18 @@ export async function chat(
   db,
   employeeId,
   question,
-  { infer = config.groqKey ? hostedAnswer : null, timeout = 8000 } = {}
+  { infer = config.groqKey ? hostedAnswer : null, timeout = 8000 } = {},
 ) {
   const profile = await checklist(db, employeeId)
   if (
     /another|coworker|colleague|all employees|team.?s tasks|someone else|[\p{L}]+['’]s (?:tasks|payroll|checklist|status)/iu.test(
-      question
+      question,
     )
   )
     return reply('I can only look up your own onboarding records.', 'denied')
   if (
     /my (?:joining|start) date|when do i start|my (?:manager|department|designation|office)\b/i.test(
-      question
+      question,
     )
   ) {
     const fact = {
@@ -72,7 +72,7 @@ export async function chat(
   }
   if (
     /my documents?|document (?:status|rejected|verification)|why.*document.*reject/i.test(
-      question
+      question,
     )
   ) {
     const docs = await db.submission.findMany({
@@ -89,7 +89,7 @@ export async function chat(
         ? facts.map((e) => e.title + ' · ' + e.body).join('\n')
         : 'You have no submitted documents. Open My Documents to see the requirements.',
       'facts',
-      facts
+      facts,
     )
   }
   if (/deadline|overdue|due (?:next|soon|today)|when.*due/i.test(question)) {
@@ -99,7 +99,7 @@ export async function chat(
         (t) =>
           t.due &&
           t.status !== 'Complete' &&
-          (!/overdue/i.test(question) || t.due < today)
+          (!/overdue/i.test(question) || t.due < today),
       )
       .sort((a, b) => a.due - b.due)
     const facts = due.map((t) => ({
@@ -117,7 +117,7 @@ export async function chat(
         ? facts.map((e) => e.title + ' · ' + e.body).join('\n')
         : 'No matching open task deadlines.',
       'facts',
-      facts
+      facts,
     )
   }
   const asksAboutBlockers =
@@ -130,7 +130,7 @@ export async function chat(
     asksAboutNext ||
     asksAboutReadiness ||
     /who owns|my status|which tasks|my checklist|remaining tasks/i.test(
-      question
+      question,
     )
   const policy = !status || /policy|where|how do/i.test(question)
   let evidence = []
@@ -148,7 +148,7 @@ export async function chat(
         t.title
           .toLowerCase()
           .split(/\s+/)
-          .some((w) => w.length > 3 && question.toLowerCase().includes(w))
+          .some((w) => w.length > 3 && question.toLowerCase().includes(w)),
       )
     else tasks = tasks.filter((t) => t.required && t.status !== 'Complete')
     evidence = tasks.map((t) => ({
@@ -175,12 +175,12 @@ export async function chat(
           : asksAboutBlockers
             ? 'No checklist tasks are currently blocked.'
             : 'There are no matching tasks.',
-        'facts'
+        'facts',
       )
   }
   if (policy) {
     const requestedOffice = locations.find((location) =>
-      question.toLowerCase().includes(location.toLowerCase())
+      question.toLowerCase().includes(location.toLowerCase()),
     )
     if (
       /office|address/i.test(question) &&
@@ -195,7 +195,7 @@ export async function chat(
           '.',
         'unsupported',
         evidence,
-        true
+        true,
       )
     }
     const rows = await retrieve(db, profile, question)
@@ -205,7 +205,7 @@ export async function chat(
         title: p.title,
         body: p.body,
         version: p.version,
-      }))
+      })),
     )
   }
   if (!evidence.length) {
@@ -214,13 +214,13 @@ export async function chat(
         'Are you asking about checklist progress, a blocker, or an onboarding policy?',
         'clarify',
         [],
-        true
+        false,
       )
     return reply(
       'I could not find an approved passage for that question. Would you like HR to follow up?',
       'unsupported',
       [],
-      true
+      true,
     )
   }
   const direct = (mode) =>
@@ -233,7 +233,7 @@ export async function chat(
         : '') + evidence.map((e) => e.title + ' — ' + e.body).join('\n'),
       mode,
       evidence,
-      Boolean(policy)
+      false,
     )
   if (!infer) return direct('facts')
   const controller = new AbortController()
@@ -249,14 +249,14 @@ export async function chat(
       await Promise.race([
         infer(question, evidence, controller.signal),
         deadline,
-      ])
+      ]),
     )
     if (answer.escalate && !answer.evidenceIds.length)
       return reply(
         'The available evidence does not answer that question. Would you like HR to follow up?',
         'unsupported',
         [],
-        true
+        true,
       )
     if (
       !answer.evidenceIds.length ||
@@ -267,7 +267,7 @@ export async function chat(
       answer.text,
       'model',
       evidence.filter((e) => answer.evidenceIds.includes(e.id)),
-      answer.escalate
+      answer.escalate,
     )
   } catch {
     return direct(controller.signal.aborted ? 'timeout' : 'model-unavailable')

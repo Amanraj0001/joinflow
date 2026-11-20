@@ -6,16 +6,25 @@ import { StaffAccess } from './StaffAccess'
 import React from 'react'
 import { Decisions, NewHire } from './Team'
 import { Panel, isLate } from '../shared/Forms'
-import { Messages } from '../shared/Messages'
-import { Handoffs } from '../shared/Handoffs'
+import { Tickets } from '../shared/Tickets'
 import { Policies } from './Policies'
 import { Plans } from './Plans'
+import { PeopleOverview } from './PeopleOverview'
 export function StaffPortal({ user, data, tab, act, busy, setTab }) {
   const hr = user.role === 'HR',
     { people } = data,
     [page, filter] = tab.split('|')
   const tasks = people.flatMap((p) =>
-    p.tasks.map((t) => ({ ...t, person: p.user.name, employeeId: p.id }))
+    p.tasks.map((t) => ({
+      ...t,
+      person: p.user.name,
+      employeeId: p.id,
+      history: (data.history || p.events).filter(
+        (e) =>
+          e.employeeId === p.id &&
+          (e.taskId === t.id || (!e.taskId && e.message.includes(t.title))),
+      ),
+    })),
   )
   const active = tasks.filter((t) => t.review === 'Approved'),
     pending = active.filter((t) => t.status !== 'Complete'),
@@ -50,12 +59,13 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
   if (page === 'Decisions') return <Decisions {...{ data, act, busy }} />
   if (page === 'HR inbox')
     return (
-      <>
-        <Messages
-          contacts={people.map((p) => ({ id: p.id, name: p.user.name }))}
-        />
-        <Handoffs items={data.handoffs} {...{ people, act, busy }} />
-      </>
+      <Tickets
+        staff
+        {...{ people, act, busy }}
+        contacts={people.map((p) => ({ id: p.id, name: p.user.name }))}
+        issues={data.issues}
+        handoffs={data.handoffs}
+      />
     )
   if (page === 'Access & roles') return <StaffAccess {...{ data, act }} />
   if (page === 'Documents')
@@ -80,7 +90,9 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
     )
   if (page === 'Escalations')
     return (
-      <Escalations {...{ data, people, risk, late, blocked, hr, user, act }} />
+      <Escalations
+        {...{ data, people, risk, late, blocked, hr, user, act, setTab }}
+      />
     )
   if (page === 'Tasks')
     return (
@@ -90,6 +102,14 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
     )
   if (page === 'Employees')
     return <EmployeeDirectory {...{ people, filter, soon, act, busy, hr }} />
+  const queue = [
+    ...(hr
+      ? [['Plans awaiting approval', people.filter(drafts).length, 'Plans']]
+      : [['Pending decisions', decisions.length, 'Decisions']]),
+    ['Pending tasks', pending.length, 'Tasks|Pending'],
+    ['Overdue tasks', late.length, 'Tasks|Overdue'],
+    ['Critical blockers', blocked.length, 'Tasks|Blocked'],
+  ]
   const cards = [
     [
       'Active hires',
@@ -97,12 +117,7 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
       'Employees|Active',
     ],
     ['Joining soon', people.filter(soon).length, 'Employees|Joining soon'],
-    ...(hr
-      ? [['Plans awaiting approval', people.filter(drafts).length, 'Plans']]
-      : [['Pending decisions', decisions.length, 'Decisions']]),
-    ['Pending tasks', pending.length, 'Tasks|Pending'],
-    ['Overdue tasks', late.length, 'Tasks|Overdue'],
-    ['Critical blockers', blocked.length, 'Tasks|Blocked'],
+    ...queue,
     ['Requires attention', people.filter(risk).length, 'Escalations'],
     [
       'Day-one ready',
@@ -112,7 +127,10 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
   ]
   return (
     <>
-      <div className="stats portalstats">
+      {hr ? (
+        <PeopleOverview people={people} joining={people.filter(soon).length}
+          attention={people.filter(risk).length} queues={queue} setTab={setTab} />
+      ) : <div className="stats portalstats">
         {cards.map(([k, v, page]) => (
           <button
             key={k}
@@ -124,17 +142,27 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
             <b>{v}</b>
           </button>
         ))}
-      </div>
+      </div>}
       <Panel title="Department progress">
-        {departments.map((d) => {
-          const list = active.filter((t) => t.department === d)
-          return (
-            <p key={d}>
-              {d} · {list.filter((t) => t.status === 'Complete').length} /{' '}
-              {list.length} complete
-            </p>
-          )
-        })}
+        {departments.length === 0 && <p>No onboarding tasks assigned yet.</p>}
+        <ul className="department-chart">
+          {departments.map((department) => {
+            const assigned = active.filter((task) => task.department === department)
+            const total = assigned.length
+            const completed = assigned.filter((task) => task.status === 'Complete').length
+            return (
+              <li key={department}>
+                <strong>{department}</strong>
+                {total > 0 ? (
+                  <>
+                    <progress aria-label={department + ' task completion'} value={completed} max={total} />
+                    <span><b>{Math.round(100 * completed / total)}%</b> · {completed} of {total} complete</span>
+                  </>
+                ) : <span className="department-empty">No approved tasks</span>}
+              </li>
+            )
+          })}
+        </ul>
       </Panel>
       <Panel title="Recent onboarding activity">
         {history.slice(0, 5).map((e) => (

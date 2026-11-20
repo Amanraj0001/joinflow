@@ -1,10 +1,12 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { Panel, Form, Field, file64, shortDate, isLate } from '../shared/Forms'
-import { Messages } from '../shared/Messages'
-import { Handoffs } from '../shared/Handoffs'
+import { Tickets } from '../shared/Tickets'
 import { Chat } from './Assistant'
 import { Employee } from './Employee'
 export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
+  const [filter, setFilter] = useState('Unread')
+  const [page, target] = tab.split('|')
   const tasks = p.tasks,
     complete = tasks.filter((t) => t.status === 'Complete').length,
     next = tasks.find((t) => t.id === p.next)
@@ -21,6 +23,8 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
     return (
       <Employee
         key={tab}
+        setTab={setTab}
+        target={tab.split('|')[2]}
         initialFilter={tab.split('|')[1]}
         profile={p}
         {...{ tab, act, busy }}
@@ -40,13 +44,18 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
         <p>Reporting manager · {p.manager.name}</p>
       </Panel>
     )
-  if (tab === 'My Documents')
+  if (page === 'My Documents')
     return (
       <Panel title="Required documents">
         {p.requiredDocuments.map((kind) => {
           const doc = p.documents.find((d) => d.kind === kind)
           return (
-            <article className="handoff" key={kind}>
+            <article
+              className="handoff"
+              key={kind}
+              autoFocus={Boolean(target && target === doc?.id)}
+              tabIndex={-1}
+            >
               <h3>{kind}</h3>
               <p>{doc?.status || 'Awaiting submission'}</p>
               {doc && (
@@ -55,7 +64,8 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
                 </a>
               )}
               {doc?.reason && <p>HR feedback · {doc.reason}</p>}
-              {(!doc || doc.status === 'Rejected') && (
+              {(!doc ||
+                ['Rejected', 'Resubmission Required'].includes(doc.status)) && (
                 <Form
                   reset
                   label={doc ? 'Replace document' : 'Submit document'}
@@ -104,77 +114,89 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
   if (tab === 'Notifications')
     return (
       <Panel title="Updates and reminders">
-        {!notices.length && <p>No updates yet.</p>}
-        {notices.map((n) => (
-          <article key={n.id} className="decision">
-            <div>
-              <strong>{n.body}</strong>
-              <small>
-                {shortDate(n.createdAt)} · {n.read ? 'Read' : 'Unread'}
-              </small>
-            </div>
-            {!n.read && (
-              <button
-                onClick={() => act('/notifications/' + n.id + '/read', {})}
-              >
-                Mark read
-              </button>
-            )}
-          </article>
-        ))}
-      </Panel>
-    )
-  if (tab === 'Help & Support')
-    return (
-      <>
-        <Messages contacts={p.contacts} />
-        <Panel title="Raise an onboarding issue">
-          <Form reset label="Create request" submit={(v) => act('/issues', v)}>
-            <Field
-              label="Category"
-              name="category"
-              options={[
-                'Laptop not received',
-                'Document upload',
-                'Company email',
-                'Access permissions',
-                'Payroll',
-                'Other',
-              ]}
-            />
-            <Field
-              label="Description"
-              name="description"
-              type="textarea"
-              maxLength={3000}
-            />
-          </Form>
-          {p.issues.map((i) => (
-            <article className="handoff" key={i.id}>
-              <strong>
-                {i.category} · {i.status}
-              </strong>
-              <p>{i.description}</p>
-              <small>
-                {i.department} · {i.priority} priority
-              </small>
-              {i.updates.map((u, n) => (
-                <p key={n}>
-                  {u.author} · {u.body}
-                </p>
-              ))}
+        <div className="tabs">
+          {['Unread', 'Read', 'All'].map((f) => (
+            <button
+              key={f}
+              aria-pressed={filter === f}
+              className={filter === f ? 'active' : ''}
+              onClick={() => setFilter(f)}
+            >
+              {f}
+              {f === 'Unread' && ' · ' + notices.filter((n) => !n.read).length}
+            </button>
+          ))}
+        </div>
+        <button
+          disabled={busy || !notices.some((n) => !n.read)}
+          onClick={() => act('/notifications/read-all', {})}
+        >
+          Mark all as read
+        </button>
+        {!notices.some(
+          (n) => filter === 'All' || n.read === (filter === 'Read'),
+        ) && <p>No {filter.toLowerCase()} notifications.</p>}
+        {notices
+          .filter((n) => filter === 'All' || n.read === (filter === 'Read'))
+          .map((n) => (
+            <article key={n.id} className="decision">
+              <div>
+                <button
+                  className="link"
+                  onClick={async () => {
+                    const [type, id] = n.key.split(':')
+                    if (
+                      !n.read &&
+                      !(await act('/notifications/' + n.id + '/read', {}))
+                    )
+                      return
+                    setTab(
+                      type === 'document'
+                        ? 'My Documents|' + id
+                        : type === 'issue'
+                          ? 'Help & Support|' + id
+                          : type === 'message'
+                            ? 'Help & Support|Messages'
+                            : 'My Tasks|All|' + id,
+                    )
+                  }}
+                >
+                  {n.body}
+                </button>
+                <small>
+                  {new Date(n.createdAt).toLocaleString()} ·{' '}
+                  {n.read ? 'Read' : 'Unread'}
+                </small>
+              </div>
+              {!n.read && (
+                <button
+                  onClick={() => act('/notifications/' + n.id + '/read', {})}
+                >
+                  Mark read
+                </button>
+              )}
             </article>
           ))}
-        </Panel>
-        <Handoffs items={p.handoffs} />
-      </>
+      </Panel>
+    )
+  if (page === 'Help & Support')
+    return (
+      <Tickets
+        key={target}
+        target={target}
+        issues={p.issues}
+        handoffs={p.handoffs}
+        contacts={p.contacts}
+        act={act}
+        busy={busy}
+      />
     )
   return (
     <>
       <section className="hero">
         <div>
-          <small>ONBOARDING PROGRESS</small>
-          <h2>
+          <small>YOUR ONBOARDING PROGRESS</small>
+          <h2 className="progress-title">
             {tasks.length ? Math.round((100 * complete) / tasks.length) : 0}%
             complete
           </h2>
@@ -186,7 +208,11 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
                 : p.readiness.remaining.length +
                   ' day-one requirements remaining'}
           </p>
-          <progress value={complete} max={tasks.length || 1} />
+          <progress
+            aria-label="Overall onboarding progress"
+            value={complete}
+            max={tasks.length || 1}
+          />
         </div>
         {navigate('AI Assistant', 'Ask the assistant')}
       </section>
@@ -195,13 +221,16 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
           ['Completed', complete],
           ['Pending', tasks.length - complete],
           ['Overdue', tasks.filter(isLate).length],
-        ].map(([k, n]) => (
+        ].map(([k, n], i) => (
           <button
             key={k}
             onClick={() =>
               setTab('My Tasks|' + (k === 'Completed' ? 'Complete' : k))
             }
           >
+            {React.createElement([CheckCircle, Clock, AlertCircle][i], {
+              size: 20,
+            })}
             <small>{k}</small>
             <b>{n}</b>
           </button>
@@ -213,20 +242,32 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
             .filter((t) => !isLate(t))
             .slice(0, 5)
             .map((t) => (
-              <p key={t.id}>
-                {t.title} · {shortDate(t.due)}
+              <p className="timeline-row" key={t.id}>
+                <strong>{t.title}</strong>
+                <small>
+                  {shortDate(t.due)} · {t.owner.name}
+                </small>
               </p>
             ))}
           {!deadline.some((t) => !isLate(t)) && <p>No upcoming deadlines.</p>}
         </Panel>
         <Panel title="Next action">
-          <p>{next?.title || 'No available task right now.'}</p>
-          {navigate('My Tasks')}
+          <p className="recommended">
+            {next?.title || 'No available task right now.'}
+          </p>
+          {navigate(
+            next ? 'My Tasks|All|' + next.id : 'My Tasks',
+            'Open checklist',
+          )}
         </Panel>
       </div>
       <Panel title="Recent notifications">
+        {!notices.length && <p>No updates yet.</p>}
         {notices.slice(0, 3).map((n) => (
-          <p key={n.id}>{n.body}</p>
+          <p className="timeline-row" key={n.id}>
+            {n.body}
+            <small>{shortDate(n.createdAt)}</small>
+          </p>
         ))}
         {navigate('Notifications', 'View all updates')}
       </Panel>

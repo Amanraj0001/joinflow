@@ -831,3 +831,206 @@ fieldset {
     flex: none;
   }
 }
+
+.hero .progress-title {
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  letter-spacing: -0.045em;
+}
+.timeline-row,
+.ticket-list button {
+  border-bottom: 1px solid #dce4d8;
+  padding: 0.8rem 0;
+}
+.timeline-row small,
+.inbox small,
+.ticket-list button strong {
+  display: block;
+}
+.conversation {
+  max-height: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.chat .response {
+  background: transparent;
+  border: none;
+  padding: 0.7rem 0;
+}
+.chat .response h3 {
+  margin-left: auto;
+  width: fit-content;
+  background: #e4edda;
+  border-radius: 14px 14px 3px 14px;
+  padding: 0.75rem 1rem;
+}
+.chat .response > p {
+  background: #f4f3e9;
+  border-radius: 3px 14px 14px;
+  padding: 1rem;
+  white-space: pre-line;
+}
+.inbox {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+  align-items: start;
+}
+.ticket-list > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.ticket-list > button[aria-pressed='true'] {
+  background: #e4edda;
+}
+.ticket-list {
+  max-height: 74vh;
+  overflow: auto;
+}
+.table-scroll {
+  overflow: auto;
+}
+.table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table-scroll th,
+.table-scroll td {
+  text-align: left;
+  padding: 0.7rem;
+  border-bottom: 1px solid #dce4d8;
+}
+.table-scroll th {
+  font-size: 0.8rem;
+  color: #435d4b;
+}
+.task-sheet {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  overflow: auto;
+  width: min(420px, 96vw);
+  padding: 2rem;
+  background: #fffef7;
+  box-shadow: 0 0 32px #253b2929;
+}
+@media (max-width: 760px) {
+  .inbox {
+    display: block;
+  }
+  .inbox:not(.selected) .ticket-detail,
+  .inbox.selected .ticket-list {
+    display: none;
+  }
+}
+
+.stats > button svg {
+  padding: 6px;
+  box-sizing: content-box;
+  border-radius: 9px;
+  background: #e5eedc;
+  color: #355b46;
+  margin-bottom: 0.4rem;
+}
+.stats > button:nth-child(3) svg {
+  background: #f6e6ce;
+  color: #805b24;
+}
+.recommended {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #214c3a;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #53815b;
+  outline-offset: 2px;
+}
+.department-chart {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+.department-chart li {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(3rem, 3fr) minmax(10rem, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: .65rem 0;
+  overflow-wrap: anywhere;
+}
+.department-chart li + li { border-top: 1px solid #e4e9df; }
+.department-chart progress {
+  appearance: none;
+  width: 100%;
+  height: .65rem;
+  border: 0;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #e6ecdf;
+  color: #38664c;
+}
+.department-chart progress::-webkit-progress-bar { background: #e6ecdf; }
+.department-chart progress::-webkit-progress-value { background: #38664c; }
+.department-chart progress::-moz-progress-bar { background: #38664c; }
+.department-chart span { font-size: .875rem; font-variant-numeric: tabular-nums; }
+.department-chart .department-empty { grid-column: span 2; color: #58695e; }
+@media (max-width: 760px) {
+  .department-chart li { grid-template-columns: 1fr auto; gap: .4rem; }
+  .department-chart progress { grid-column: 1 / -1; grid-row: 2; }
+  .department-chart .department-empty { grid-column: auto; }
+}
+.people-overview {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.people-overview section {
+  min-width: 0;
+  border-radius: 14px;
+  padding: clamp(1rem, 2vw, 1.65rem);
+}
+.people-overview h2 { margin: 0 0 .8rem; font-size: 1.15rem; }
+.people-overview button { color: inherit; text-align: left; }
+.hire-overview { background: #213f35; color: #faf9ed; }
+.hire-overview h2 { color: #dfebd4; }
+.active-hire-link, .readiness-caption button, .hire-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+}
+.active-hire-link strong {
+  font-size: clamp(2.6rem, 4vw, 3.8rem);
+  line-height: 1;
+  font-weight: 600;
+  margin-right: .35rem;
+}
+.hire-overview button:hover { text-decoration: underline; }
+.readiness-caption, .hire-links { display: flex; justify-content: space-between; gap: .75rem; }
+.readiness-caption { margin-top: 1rem; font-size: .87rem; }
+.hire-overview progress {
+  display: block; width: 100%; height: .55rem; margin: .45rem 0 1rem;
+  appearance: none; border: none; border-radius: 1rem; overflow: hidden;
+  background: #476254; color: #cce69e;
+}
+.hire-overview progress::-webkit-progress-bar { background: #476254; }
+.hire-overview progress::-webkit-progress-value { background: #cce69e; }
+.hire-overview progress::-moz-progress-bar { background: #cce69e; }
+.hire-links { flex-wrap: wrap; justify-content: flex-start; column-gap: 1.5rem; }
+.hire-links strong { color: #d6edaf; }
+.hr-queue { background: white; border: 1px solid #d6dfcf; }
+.hr-queue button {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center;
+  width: 100%; padding: .4rem 0; gap: .7rem;
+}
+.hr-queue button + button { border-top: 1px solid #e7ebe3; }
+.hr-queue button:hover span { text-decoration: underline; }
+.hr-queue b { min-width: 2rem; border-radius: .4rem; background: #ecf1e7; text-align: center; }
+.hr-queue .needs-action { color: #7e411a; background: #f6e6d4; }
+@media (max-width: 850px) {
+  .people-overview { grid-template-columns: 1fr; }
+}

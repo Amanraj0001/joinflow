@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
 import { Field, Form } from '../shared/Forms'
 import { api } from '../shared/api'
-export function Access({ mode, back }) {
+export function Access({ mode, role, back }) {
   const [message, setMessage] = useState('')
   return (
     <section>
       <button onClick={back}>← Back to sign in</button>
       <h2>
         {mode === 'register'
-          ? 'Request staff access'
+          ? role + ' signup'
           : mode === 'reset'
             ? 'Choose a password'
             : 'Forgot password'}
@@ -26,7 +26,7 @@ export function Access({ mode, back }) {
           }
           submit={async (v) => {
             if (mode === 'register') {
-              await api('/auth/register', v)
+              await api('/auth/register', { ...v, role })
               setMessage('Your account is awaiting manager approval.')
             } else if (mode === 'reset') {
               await api('/auth/reset', { ...v, token: location.hash.slice(7) })
@@ -43,11 +43,7 @@ export function Access({ mode, back }) {
           {mode === 'register' && (
             <>
               <Field label="Full name" name="name" />
-              <Field
-                label="Access role"
-                name="role"
-                options={['HR', 'Manager']}
-              />
+              <p>An existing manager must approve your request before you can sign in.</p>
               <Field
                 label="Department"
                 name="department"

@@ -57,10 +57,21 @@ export async function checklist(db, id, includeDraft = false) {
           ? 'Complete'
           : needs.length || t.approval?.decision === 'declined'
             ? 'Blocked'
-            : 'Available'
+            : t.startedAt
+              ? 'In progress'
+              : 'Available'
     return {
       id: t.id,
       templateId: t.templateId,
+      completedAt: t.completedAt,
+      evidenceKind:
+        t.templateId === 'identity' ? 'Identity document' : t.evidenceKind,
+      completionMethod:
+        t.templateId === 'identity' || t.evidenceKind
+          ? 'Evidence'
+          : t.approval || t.owner.role !== 'Employee'
+            ? 'Approval'
+            : 'Self-attested',
       title: t.template.title,
       category: t.template.category,
       description: t.detail || t.template.description,
@@ -89,7 +100,9 @@ export async function checklist(db, id, includeDraft = false) {
       remaining: remaining.map((t) => t.id),
     },
     next: tasks.find(
-      (t) => t.owner.id === profile.userId && t.status === 'Available'
+      (t) =>
+        t.owner.id === profile.userId &&
+        ['Available', 'In progress'].includes(t.status),
     )?.id,
   }
 }
@@ -121,7 +134,7 @@ export async function assign(
   db,
   employee,
   templates,
-  review = employee.plan === 'Draft' ? 'Draft' : 'Approved'
+  review = employee.plan === 'Draft' ? 'Draft' : 'Approved',
 ) {
   for (const t of templates) {
     const task = await db.task.upsert({
@@ -158,8 +171,8 @@ export async function lockProfile(db, id) {
   if (!rows.length) throw new HttpError(404, 'Employee not found.')
   return db.employee.findUniqueOrThrow({ where: { id } })
 }
-export async function record(db, employeeId, actorId, message) {
-  await db.audit.create({ data: { employeeId, actorId, message } })
+export async function record(db, employeeId, actorId, message, taskId) {
+  await db.audit.create({ data: { employeeId, actorId, message, taskId } })
   return db.employee.update({
     where: { id: employeeId },
     data: { version: { increment: 1 } },

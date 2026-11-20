@@ -31,7 +31,7 @@ test('an employee sees the laptop approval unlock setup, cites a policy and cont
     mgr
       .locator('.decision')
       .filter({ hasText: 'Approve laptop request' })
-      .filter({ hasText: 'Alex Park' })
+      .filter({ hasText: 'Alex Park' }),
   ).toHaveCount(0)
   await page.getByRole('button', { name: 'Refresh' }).click()
   await expect(setup).toContainText('Available')
@@ -41,6 +41,7 @@ test('an employee sees the laptop approval unlock setup, cites a policy and cont
   await expect(page.locator('details[open]')).toContainText('start date')
   await page.getByLabel('Ask a question').fill('Is relocation covered?')
   await page.getByRole('button', { name: 'Send question', exact: true }).click()
+  page.once('dialog', (d) => d.accept())
   await page
     .locator('.response')
     .filter({ hasText: 'Is relocation covered?' })
@@ -50,23 +51,24 @@ test('an employee sees the laptop approval unlock setup, cites a policy and cont
   const hr = await browser.newPage()
   await login(hr, 'HR')
   await hr.getByRole('button', { name: 'HR inbox' }).click()
-  await expect(hr.getByText('Is relocation covered?')).toBeVisible()
+  await hr.getByRole('button', { name: /Is relocation covered/ }).click()
   await hr
     .getByLabel('Reply to employee')
     .fill('I will send you the relocation guide.')
   await hr.getByRole('button', { name: 'Send reply' }).click()
   await expect(
-    hr.getByText('I will send you the relocation guide.')
+    hr.getByText('I will send you the relocation guide.'),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Help & Support' }).click()
+  await page.getByRole('button', { name: /Is relocation covered/ }).click()
   await expect(
-    page.getByText('I will send you the relocation guide.')
+    page.getByText('I will send you the relocation guide.'),
   ).toBeVisible()
   await hr.getByRole('button', { name: 'Employees', exact: true }).click()
   await hr.getByRole('button', { name: 'Preview move to Austin' }).click()
   await hr.getByRole('button', { name: 'Cancel' }).click()
   await expect(
-    hr.getByRole('button', { name: 'Preview move to Austin' })
+    hr.getByRole('button', { name: 'Preview move to Austin' }),
   ).toBeVisible()
   await mgr.close()
   await hr.close()
@@ -85,24 +87,24 @@ test('HR creates an operations hire and applies a reviewed office move', async (
   await page.getByLabel('Job role').selectOption('Operations')
   await page.getByRole('button', { name: 'Create checklist' }).click()
   await expect(
-    page.getByRole('heading', { name: 'Review onboarding plan' })
+    page.getByRole('heading', { name: 'Review onboarding plan' }),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Employees', exact: true }).click()
   await page.getByRole('combobox').selectOption({ label: 'Robin West' })
   await expect(
-    page.getByText(/Review operations playbook · Draft/)
+    page.getByText(/Review operations playbook · Draft/),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Preview move to Austin' }).click()
   await page.getByRole('button', { name: 'Apply change' }).click()
   await expect(
-    page.getByText(/Collect Austin access pass · Draft/)
+    page.getByText(/Collect Austin access pass · Draft/),
   ).toBeVisible()
   await expect(
-    page.getByText(/Collect London access pass · Draft/)
+    page.getByText(/Collect London access pass · Draft/),
   ).toHaveCount(0)
   await page.getByRole('button', { name: 'History', exact: true }).click()
   await expect(
-    page.getByText('Changed location from London to Austin.')
+    page.getByText('Changed location from London to Austin.'),
   ).toBeVisible()
 })
 
@@ -113,7 +115,7 @@ test('manager publishes a new policy, employee retrieves it and dashboard links 
   await login(page, 'Manager')
   await page.getByRole('button', { name: 'Active hires' }).click()
   await expect(
-    page.getByRole('heading', { name: 'Active', exact: true })
+    page.getByRole('heading', { name: 'Active', exact: true }),
   ).toBeVisible()
   await page.getByRole('button', { name: '← Back', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Active hires' })).toBeVisible()
@@ -127,7 +129,7 @@ test('manager publishes a new policy, employee retrieves it and dashboard links 
     .fill('Store bicycles in the orchid courtyard.')
   await create.getByRole('button', { name: 'Add policy' }).click()
   await expect(
-    page.locator('summary').filter({ hasText: 'Bicycle storage' })
+    page.locator('summary').filter({ hasText: 'Bicycle storage' }),
   ).toContainText('Ready')
   const employee = await browser.newPage()
   await login(employee, 'Employee')
@@ -139,7 +141,9 @@ test('manager publishes a new policy, employee retrieves it and dashboard links 
   await employee
     .getByRole('button', { name: 'Send question', exact: true })
     .click()
-  await expect(employee.locator('.response')).toContainText('orchid courtyard')
+  await expect(employee.locator('.response').last()).toContainText(
+    'orchid courtyard',
+  )
   await employee.close()
 })
 test('employee submits a document and sees HR feedback in the portal', async ({
@@ -155,7 +159,7 @@ test('employee submits a document and sees HR feedback in the portal', async ({
     buffer: Buffer.from('%PDF-1.4 synthetic test'),
   })
   await offer.getByRole('button', { name: 'Submit document' }).click()
-  await expect(offer).toContainText('Pending Review')
+  await expect(offer).toContainText('Needs HR Review')
   const hr = await browser.newPage()
   await login(hr, 'HR')
   await hr.getByRole('button', { name: 'Documents', exact: true }).click()
@@ -168,7 +172,64 @@ test('employee submits a document and sees HR feedback in the portal', async ({
   await page.getByRole('button', { name: 'Refresh' }).click()
   await expect(offer).toContainText('Please upload the signed copy.')
   await expect(
-    offer.getByRole('button', { name: 'Replace document' })
+    offer.getByRole('button', { name: 'Replace document' }),
   ).toBeVisible()
   await hr.close()
+})
+
+test('an employee opens a support ticket, receives an HR reply and follows the notification', async ({
+  page,
+  browser,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await login(page, 'Employee')
+  await page.getByRole('button', { name: 'Help & Support' }).click()
+  await page.getByRole('button', { name: 'New Request', exact: true }).click()
+  await page.getByLabel('Category').selectOption('Company email')
+  await page.getByLabel('Description').fill('Unable to open my work mailbox.')
+  await page.getByRole('button', { name: 'Create request' }).click()
+  await expect(page.getByRole('status')).toContainText('Request created')
+  const hr = await browser.newPage()
+  await login(hr, 'HR')
+  await hr.getByRole('button', { name: 'HR inbox' }).click()
+  await hr.getByRole('button', { name: /Alex Park Company email/ }).click()
+  await hr.getByLabel('Issue status').selectOption('Waiting for Employee')
+  await hr
+    .getByLabel('Response', { exact: true })
+    .fill('Please try your work email again.')
+  await hr.getByRole('button', { name: 'Update issue' }).click()
+  await expect(hr.locator('.ticket-detail .conversation')).toContainText(
+    'Please try your work email again.',
+  )
+  await page.getByRole('button', { name: 'Notifications', exact: true }).click()
+  await page
+    .getByRole('button', { name: /Company email · Waiting for Employee/ })
+    .click()
+  await expect(page.locator('.ticket-detail')).toContainText(
+    'Please try your work email again.',
+  )
+  await page.getByLabel('Response', { exact: true }).fill('It works now.')
+  await page.getByRole('button', { name: 'Send reply' }).click()
+  await expect(page.locator('.conversation')).toContainText('It works now.')
+  await hr.close()
+})
+
+test('HR investigates a delayed task and filters the task register', async ({page}) => {
+  await login(page,'HR')
+  await page.getByRole('button',{name:'Escalations',exact:true}).click()
+  await page.getByRole('button',{name:'Delayed Tasks'}).click()
+  const delayed=page.locator('article.handoff').first()
+  await delayed.getByRole('button',{name:'Investigate task'}).click()
+  const detail=page.getByLabel('Task details')
+  await expect(detail).toBeVisible()
+  await expect(detail.locator('details')).not.toHaveAttribute('open','')
+  await detail.getByText('Activity history').click()
+  await expect(detail.locator('details')).toHaveAttribute('open','')
+  await detail.getByRole('button',{name:'Close details'}).click()
+  await page.getByLabel('Employee',{exact:true}).fill('Alex Park')
+  const rows=page.locator('tbody tr')
+  await expect(rows.first()).toContainText('Alex Park')
+  await expect(rows.filter({hasText:'Maya'})).toHaveCount(0)
+  await page.getByRole('combobox',{name:'Department',exact:true}).selectOption('IT')
+  await expect(rows.first().locator('td').nth(2)).toHaveText('IT')
 })

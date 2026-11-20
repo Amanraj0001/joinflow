@@ -9,9 +9,16 @@ import {
   ChevronRight,
   Check,
 } from 'lucide-react'
-export function Employee({ profile, initialFilter, act, busy }) {
+export function Employee({
+  profile,
+  initialFilter,
+  target,
+  setTab,
+  act,
+  busy,
+}) {
   const [filter, setFilter] = useState(initialFilter || 'All'),
-    [open, setOpen] = useState(null)
+    [open, setOpen] = useState(target || null)
   const { tasks, readiness } = profile,
     next = tasks.find((t) => t.id === profile.next)
   const blocked = tasks.filter((t) => t.status === 'Blocked')
@@ -21,6 +28,85 @@ export function Employee({ profile, initialFilter, act, busy }) {
     if (filter === 'Day one') return readiness.remaining.includes(t.id)
     return filter === 'All' || filter === t.status
   })
+  function action(t) {
+    if (
+      t.completionMethod === 'Evidence' &&
+      !profile.documents.some(
+        (d) => d.kind === t.evidenceKind && d.status === 'Approved',
+      )
+    )
+      return (
+        <button className="primary" onClick={() => setTab('My Documents')}>
+          View required evidence
+        </button>
+      )
+    return (
+      <button
+        disabled={busy}
+        className="primary"
+        onClick={() => act('/tasks/' + t.id + '/complete', {})}
+      >
+        Mark complete <Check size={15} />
+      </button>
+    )
+  }
+  const renderTask = (t) => (
+    <article className="task" key={t.id}>
+      <button
+        className="taskrow"
+        onClick={() => setOpen(open === t.id ? null : t.id)}
+        aria-expanded={open === t.id}
+      >
+        <span className={'taskicon ' + t.status.toLowerCase()}>
+          {t.status === 'Complete' ? (
+            <Check />
+          ) : t.status === 'Blocked' ? (
+            <LockKeyhole />
+          ) : (
+            <ClipboardList />
+          )}
+        </span>
+        <span className="taskname">
+          <strong>{t.title}</strong>
+          <small>
+            {t.category} · {t.owner.name}
+          </small>
+        </span>
+        <Pill value={t.status} />
+        <ChevronRight size={15} />
+      </button>
+      {open === t.id && (
+        <div className="taskdetail">
+          <p>{t.description}</p>
+          <small>{t.completionMethod} completion</small>
+          <small>
+            {t.required ? 'Required for day one' : 'Optional for day one'}
+          </small>
+          {t.owner.id === profile.userId &&
+            t.status === 'Available' &&
+            !t.approval && (
+              <button
+                disabled={busy}
+                onClick={() => act('/tasks/' + t.id + '/start', {})}
+              >
+                Start task
+              </button>
+            )}
+          {t.needs.map((n) => (
+            <p key={n.id}>
+              Waiting for {n.title} · {n.owner}
+            </p>
+          ))}
+          {t.approval?.decision === 'declined' && (
+            <p>Request declined. Contact your manager or HR.</p>
+          )}
+          {t.owner.id === profile.userId &&
+            ['Available', 'In progress'].includes(t.status) &&
+            action(t)}
+        </div>
+      )}
+    </article>
+  )
   return (
     <>
       <section className="hero">
@@ -55,6 +141,7 @@ export function Employee({ profile, initialFilter, act, busy }) {
               'Day one',
               'Available',
               'Blocked',
+              'In progress',
               'Complete',
               'Pending',
               'Overdue',
@@ -69,61 +156,36 @@ export function Employee({ profile, initialFilter, act, busy }) {
               </button>
             ))}
           </div>
-          {visibleTasks.map((t) => (
-            <article className="task" key={t.id}>
-              <button
-                className="taskrow"
-                onClick={() => setOpen(open === t.id ? null : t.id)}
-                aria-expanded={open === t.id}
-              >
-                <span className={'taskicon ' + t.status.toLowerCase()}>
-                  {t.status === 'Complete' ? (
-                    <Check />
-                  ) : t.status === 'Blocked' ? (
-                    <LockKeyhole />
-                  ) : (
-                    <ClipboardList />
-                  )}
-                </span>
-                <span className="taskname">
-                  <strong>{t.title}</strong>
-                  <small>
-                    {t.category} · {t.owner.name}
-                  </small>
-                </span>
-                <Pill value={t.status} />
-                <ChevronRight size={15} />
-              </button>
-              {open === t.id && (
-                <div className="taskdetail">
-                  <p>{t.description}</p>
-                  <small>
-                    {t.required
-                      ? 'Required for day one'
-                      : 'Optional for day one'}
-                  </small>
-                  {t.needs.map((n) => (
-                    <p key={n.id}>
-                      Waiting for {n.title} · {n.owner}
-                    </p>
-                  ))}
-                  {t.approval?.decision === 'declined' && (
-                    <p>Request declined. Contact your manager or HR.</p>
-                  )}
-                  {t.owner.id === profile.userId &&
-                    t.status === 'Available' && (
-                      <button
-                        disabled={busy}
-                        className="primary"
-                        onClick={() => act('/tasks/' + t.id + '/complete', {})}
-                      >
-                        Mark complete <Check size={15} />
-                      </button>
-                    )}
-                </div>
-              )}
-            </article>
-          ))}
+          {visibleTasks
+            .filter((t) => t.status !== 'Complete')
+            .sort(
+              (a, b) =>
+                Number(
+                  b.status === 'Available' && b.owner.id === profile.userId,
+                ) -
+                Number(
+                  a.status === 'Available' && a.owner.id === profile.userId,
+                ),
+            )
+            .map(renderTask)}
+          {visibleTasks.some((t) => t.status === 'Complete') && (
+            <details
+              open={
+                filter === 'Complete' ||
+                visibleTasks.some(
+                  (t) => t.id === target && t.status === 'Complete',
+                )
+              }
+            >
+              <summary>
+                Completed tasks (
+                {visibleTasks.filter((t) => t.status === 'Complete').length})
+              </summary>
+              {visibleTasks
+                .filter((t) => t.status === 'Complete')
+                .map(renderTask)}
+            </details>
+          )}
           {!visibleTasks.length && <p>No {filter.toLowerCase()} tasks.</p>}
         </section>
         <aside>
@@ -133,15 +195,7 @@ export function Employee({ profile, initialFilter, act, busy }) {
             </div>
             <h2>{next?.title || 'All caught up'}</h2>
             <p>{next?.description || 'Your available tasks are complete.'}</p>
-            {next && (
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => act('/tasks/' + next.id + '/complete', {})}
-              >
-                Mark complete <Check size={15} />
-              </button>
-            )}
+            {next && action(next)}
           </section>
           <section className="panel">
             <div className="secthead">

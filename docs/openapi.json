@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "JoinFlow API",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "servers": [
     {
@@ -182,7 +182,12 @@
             ],
             "minimum": 0,
             "maximum": 1
-          }
+          },
+          "completionMethod": {
+            "type": "string"
+          },
+          "completedAt": {},
+          "evidenceKind": {}
         },
         "required": [
           "id",
@@ -421,6 +426,9 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "analysis": {
+            "description": "HR-only extraction observations and optional model suggestions"
           }
         },
         "required": [
@@ -493,6 +501,10 @@
                 "type": "null"
               }
             ]
+          },
+          "filename": {},
+          "internalNotes": {
+            "description": "HR-only notes"
           }
         },
         "required": [
@@ -651,7 +663,16 @@
                 "type": "null"
               }
             ]
-          }
+          },
+          "owner": {},
+          "description": {},
+          "category": {},
+          "effectiveDate": {},
+          "modifiedBy": {},
+          "updatedAt": {},
+          "revisions": {},
+          "approved": {},
+          "archived": {}
         },
         "required": [
           "id",
@@ -2075,6 +2096,24 @@
             }
           }
         }
+      },
+      "get": {
+        "summary": "Read up to 60 recent turns for the authenticated employee",
+        "responses": {
+          "200": {
+            "description": "Chronological conversation turns with answers, evidence and HR forwarding state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/handoffs": {
@@ -2102,6 +2141,9 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 1000
+                  },
+                  "turnId": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -3241,7 +3283,8 @@
                   "status": {
                     "enum": [
                       "Approved",
-                      "Rejected"
+                      "Rejected",
+                      "Resubmission Required"
                     ]
                   },
                   "reason": {
@@ -3317,6 +3360,12 @@
                     "type": "string"
                   },
                   "description": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "filename": {
                     "type": "string"
                   }
                 },
@@ -3735,6 +3784,18 @@
                   },
                   "version": {
                     "type": "integer"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "effectiveDate": {
+                    "type": "string"
+                  },
+                  "ownerId": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -3844,6 +3905,18 @@
                   },
                   "version": {
                     "type": "integer"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "effectiveDate": {
+                    "type": "string"
+                  },
+                  "ownerId": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -4077,13 +4150,456 @@
                   "status": {
                     "enum": [
                       "Reviewed",
-                      "Declined"
+                      "Declined",
+                      "Approved"
                     ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "description": "Required for publication"
                   }
                 },
                 "required": [
                   "status"
                 ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}/start": {
+      "post": {
+        "summary": "Start an available assigned task",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact application origin"
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "post": {
+        "summary": "Mark all of the signed-in employee’s notices read",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}/reply": {
+      "post": {
+        "summary": "Reply to your own open ticket",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "body"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}/note": {
+      "post": {
+        "summary": "Save a private HR note",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "body"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}/attachment": {
+      "get": {
+        "summary": "Download an authorized ticket attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private file",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/{id}/preview": {
+      "get": {
+        "summary": "Preview a submission inline as HR",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private file",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/{id}/reprocess": {
+      "post": {
+        "summary": "Retry assisted extraction as HR",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact application origin"
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Request rejected or service error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
               }
             }
           }

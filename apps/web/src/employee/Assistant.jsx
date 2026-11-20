@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { api } from '../shared/api.js'
 import { Notice } from '../shared/ui.jsx'
 import { Sparkles, ArrowUpRight, ArrowRight, BookOpen } from 'lucide-react'
@@ -7,6 +7,27 @@ export function Chat() {
     [messages, setMessages] = useState([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const bottom = useRef(null)
+  useEffect(() => {
+    let live = true
+    api('/chat')
+      .then((rows) => {
+        if (live) setMessages(rows)
+      })
+      .catch((e) => {
+        if (live) setError(e.message)
+      })
+      .finally(() => {
+        if (live) setLoading(false)
+      })
+    return () => {
+      live = false
+    }
+  }, [])
+  useEffect(() => {
+    if (bottom.current) bottom.current.scrollTop = bottom.current.scrollHeight
+  }, [messages, busy])
   async function ask(q) {
     if (!q.trim() || busy) return
     setBusy(true)
@@ -22,11 +43,12 @@ export function Chat() {
     }
   }
   async function handoff(m, i) {
+    if (!window.confirm('Send this question to HR for a reply?')) return
     setBusy(true)
     try {
-      await api('/handoffs', { question: m.question })
+      await api('/handoffs', { question: m.question, turnId: m.id })
       setMessages((ms) =>
-        ms.map((x, n) => (i === n ? { ...x, sent: true } : x))
+        ms.map((x, n) => (i === n ? { ...x, sent: true } : x)),
       )
     } catch (e) {
       setError(e.message)
@@ -45,7 +67,7 @@ export function Chat() {
           <small>Answers from your checklist and approved policies</small>
         </div>
       </div>
-      {!messages.length && (
+      {!loading && !messages.length && (
         <div className="chips">
           {['What is blocked?', 'When do benefits begin?'].map((q) => (
             <button disabled={busy} key={q} onClick={() => ask(q)}>
@@ -55,31 +77,35 @@ export function Chat() {
           ))}
         </div>
       )}
-      {messages.map((m, i) => (
-        <article className="response" key={i}>
-          <h3>{m.question}</h3>
-          <p>{m.text}</p>
-          {m.evidence.map((e) => (
-            <details key={e.id}>
-              <summary>
-                <BookOpen size={14} /> {e.title}
-              </summary>
-              <p>
-                {e.body} {e.version && '· Policy v' + e.version}
-              </p>
-            </details>
-          ))}
-          {m.escalate && (
-            <button
-              className="secondary"
-              disabled={busy || m.sent}
-              onClick={() => handoff(m, i)}
-            >
-              {m.sent ? 'Sent to HR' : 'Send question to HR'}
-            </button>
-          )}
-        </article>
-      ))}
+      <div className="conversation" ref={bottom} aria-live="polite">
+        {loading && <p>Loading conversation…</p>}
+        {messages.map((m, i) => (
+          <article className="response" key={i}>
+            <h3>{m.question}</h3>
+            <p>{m.text}</p>
+            {m.evidence.map((e) => (
+              <details key={e.id}>
+                <summary>
+                  <BookOpen size={14} /> {e.title}
+                </summary>
+                <p>
+                  {e.body} {e.version && '· Policy v' + e.version}
+                </p>
+              </details>
+            ))}
+            {m.escalate && i === messages.length - 1 && (
+              <button
+                className="secondary"
+                disabled={busy || m.sent}
+                onClick={() => handoff(m, i)}
+              >
+                {m.sent ? 'Sent to HR' : 'Send question to HR'}
+              </button>
+            )}
+          </article>
+        ))}
+        {busy && <small role="status">Working…</small>}
+      </div>
       <form
         className="ask"
         onSubmit={(e) => {
@@ -96,13 +122,12 @@ export function Chat() {
         />
         <button
           aria-label="Send question"
-          disabled={busy || !question.trim()}
+          disabled={loading || busy || !question.trim()}
           className="primary"
         >
           <ArrowRight size={17} />
         </button>
       </form>
-      {busy && <small role="status">Working…</small>}
       <Notice value={error} />
     </section>
   )

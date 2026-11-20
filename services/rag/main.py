@@ -100,3 +100,35 @@ def retrieve(query: Corpus):
 @app.get("/health")
 def health():
     return {"ok": True}
+
+class ReviewInput(BaseModel):
+    pdf: str = Field(max_length=7000000)
+    kind: str
+    employee_name: str
+
+@app.post("/document-review")
+def review_document(source: ReviewInput):
+    """Extract observations locally. Employee documents never enter the policy index."""
+    try:
+        reader = PdfReader(io.BytesIO(base64.b64decode(source.pdf, validate=True)))
+        if reader.is_encrypted or len(reader.pages) > 150:
+            raise ValueError("Manual inspection required")
+        text = "\n".join((p.extract_text() or "")[:12000] for p in reader.pages[:12])
+    except Exception as exc:
+        raise HTTPException(422, "Unable to extract the PDF. Manual inspection required.") from exc
+    normalized = " ".join(text.casefold().split())
+    labels = {"Identity document": ["passport", "identity", "driver license", "identity card"],
+              "Signed offer": ["offer letter", "offer of employment", "employment offer"]}
+    detected = next((kind for kind, terms in labels.items() if any(t in normalized for t in terms)), None)
+    observations = []
+    if not text.strip():
+        observations.append("No selectable text found. Inspect the scanned pages manually.")
+    if " ".join(source.employee_name.casefold().split()) not in normalized:
+        observations.append("The employee's registered name was not located in the extracted text.")
+    if not detected:
+        observations.append("Document type could not be identified from the text.")
+    elif detected != source.kind:
+        observations.append("Detected type differs from the selected submission category.")
+    if source.kind == "Signed offer":
+        observations.append("Inspect the signature and date in the original PDF.")
+    return {"type": detected, "excerpt": text.strip()[:1200], "observations": observations}

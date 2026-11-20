@@ -15,6 +15,7 @@ export function Plans({ data, act, initialEmployee }) {
           <Field
             label="Assign to"
             name="employeeId"
+            value={p?.id}
             options={[...options, ['all', 'All current employees']]}
           />
           <Field label="Task title" name="title" />
@@ -78,6 +79,19 @@ export function Plans({ data, act, initialEmployee }) {
                     ])}
                     value={t.owner.id}
                   />
+                  {!t.approval && t.templateId !== 'identity' && (
+                    <Field
+                      name="evidenceKind"
+                      label="Required evidence"
+                      value={t.evidenceKind || ''}
+                      required={false}
+                      options={[
+                        ['', 'No document required'],
+                        'Identity document',
+                        'Signed offer',
+                      ]}
+                    />
+                  )}
                   <Field
                     label="Task review"
                     name="review"

@@ -15,7 +15,48 @@ export function DocumentReviews({ data, people, act }) {
               Download {d.filename}
             </a>
           </p>
-          {d.status === 'Pending Review' && (
+          <details>
+            <summary>Preview original PDF</summary>
+            <iframe
+              title={d.filename}
+              width="100%"
+              height="480"
+              src={'/api/documents/' + d.id + '/preview'}
+            />
+          </details>
+          {d.analysis && (
+            <details open>
+              <summary>Assisted review</summary>
+              <p>Detected type · {d.analysis.type || 'Undetermined'}</p>
+              <p className="longtext">{d.analysis.excerpt}</p>
+              {d.analysis.observations.map((o) => (
+                <p key={o}>{o}</p>
+              ))}
+              {d.analysis.checks?.length > 0 && (
+                <>
+                  <h3>AI-suggested manual checks</h3>
+                  <ul>
+                    {d.analysis.checks.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </details>
+          )}
+          {[
+            'Processing',
+            'Uploaded',
+            'Pending Review',
+            'Needs HR Review',
+          ].includes(d.status) && (
+            <button
+              onClick={() => act('/documents/' + d.id + '/reprocess', {})}
+            >
+              Retry extraction
+            </button>
+          )}
+          {['Needs HR Review', 'Pending Review'].includes(d.status) && (
             <Form
               label="Submit review"
               submit={(v) =>
@@ -28,7 +69,7 @@ export function DocumentReviews({ data, people, act }) {
               <Field
                 label="Decision"
                 name="status"
-                options={['Approved', 'Rejected']}
+                options={['Approved', 'Rejected', 'Resubmission Required']}
               />
               <Field
                 label="Reason (required for rejection)"

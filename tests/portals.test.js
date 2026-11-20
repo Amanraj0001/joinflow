@@ -56,7 +56,7 @@ describe.sequential('Portal workflows', () => {
     }).expect(201)
     await login(guest, credentials.email, credentials.password).expect(403)
     const registered = (await manager.get('/api/team')).body.registrations.find(
-      (r) => r.email === credentials.email
+      (r) => r.email === credentials.email,
     )
     await post(hr, '/registrations/' + registered.id, {
       decision: 'Approve',
@@ -102,26 +102,26 @@ describe.sequential('Portal workflows', () => {
     await login(employee, email, 'DesignerAccess123!').expect(200)
     expect((await employee.get('/api/me/checklist')).body.tasks).toHaveLength(0)
     const draft = (await hr.get('/api/team')).body.people.find(
-      (e) => e.id === p.id
+      (e) => e.id === p.id,
     )
     expect(
-      draft.tasks.some((t) => t.title === 'Set up the design library')
+      draft.tasks.some((t) => t.title === 'Set up the design library'),
     ).toBe(true)
     expect(
-      draft.tasks.some((t) => t.policyRef?.includes('Prototype review'))
+      draft.tasks.some((t) => t.policyRef?.includes('Prototype review')),
     ).toBe(true)
     await post(hr, '/plans/' + p.id + '/approve', {
       version: draft.version,
     }).expect(200)
     expect(
-      (await employee.get('/api/me/checklist')).body.tasks.length
+      (await employee.get('/api/me/checklist')).body.tasks.length,
     ).toBeGreaterThan(0)
     const query = { question: 'Who reviews prototype samples?' }
     expect(
-      (await post(employee, '/chat', query)).body.evidence.map((e) => e.id)
+      (await post(employee, '/chat', query)).body.evidence.map((e) => e.id),
     ).toContain('policy:' + policyId)
     expect(
-      (await post(peer, '/chat', query)).body.evidence.map((e) => e.id)
+      (await post(peer, '/chat', query)).body.evidence.map((e) => e.id),
     ).not.toContain('policy:' + policyId)
     const modified = {
       title: 'Prototype review',
@@ -136,11 +136,23 @@ describe.sequential('Portal workflows', () => {
     await post(hr, '/policies/' + policyId + '/suggest', {
       body: 'Explain revision labels.',
     }).expect(201)
-    await post(manager, '/policies/' + policyId + '/remove', {
+    const suggestion = (await manager.get('/api/team')).body.suggestions.find(
+      (s) => s.policyId === policyId,
+    )
+    await post(manager, '/suggestions/' + suggestion.id + '/review', {
+      status: 'Approved',
       version: 2,
     }).expect(200)
+    const revised = (await manager.get('/api/policies')).body.find(
+      (r) => r.id === policyId,
+    )
+    expect(revised.body).toContain(suggestion.body)
+    expect(revised.revisions).toHaveLength(2)
+    await post(manager, '/policies/' + policyId + '/remove', {
+      version: 3,
+    }).expect(200)
     expect(
-      (await post(employee, '/chat', query)).body.evidence.map((e) => e.id)
+      (await post(employee, '/chat', query)).body.evidence.map((e) => e.id),
     ).not.toContain('policy:' + policyId)
   })
   it('limits private documents, supports replacement after rejection and records notifications', async () => {
@@ -171,7 +183,7 @@ describe.sequential('Portal workflows', () => {
     ).body.notifications.find((n) => n.body.includes('Missing signature'))
     await post(peer, '/notifications/' + notice.id + '/read', {}).expect(404)
     await post(employee, '/notifications/' + notice.id + '/read', {}).expect(
-      200
+      200,
     )
   })
   it('routes support by rule, delivers direct replies, and revokes old sessions on reset', async () => {
@@ -180,19 +192,34 @@ describe.sequential('Portal workflows', () => {
       description: 'Inbox is unavailable',
     }).expect(201)
     expect(r.body.department).toBe('IT')
+    await post(hr, '/issues/' + r.body.id + '/note', {
+      body: 'Internal investigation',
+    }).expect(200)
+    await post(peer, '/issues/' + r.body.id + '/reply', {
+      body: 'Unauthorised',
+    }).expect(404)
+    expect(
+      (await employee.get('/api/me/checklist')).body.issues[0],
+    ).not.toHaveProperty('internalNotes')
+    await post(employee, '/notifications/read-all', {}).expect(200)
+    expect(
+      (await employee.get('/api/me/checklist')).body.notifications.every(
+        (n) => n.read,
+      ),
+    ).toBe(true)
     await post(hr, '/issues/' + r.body.id + '/update', {
       department: 'IT',
       status: 'Resolved',
       body: 'Mailbox provisioned.',
     }).expect(200)
     expect(
-      (await employee.get('/api/me/checklist')).body.issues[0].updates[0].body
+      (await employee.get('/api/me/checklist')).body.issues[0].updates[0].body,
     ).toBe('Mailbox provisioned.')
     await post(employee, '/messages/' + hrId, {
       body: 'Can we meet today?',
     }).expect(201)
     await post(hr, '/messages/' + p.id, { body: 'Yes, at reception.' }).expect(
-      201
+      201,
     )
     expect((await employee.get('/api/messages/' + hrId)).body).toHaveLength(2)
     expect((await peer.get('/api/messages/' + hrId)).body).toEqual([])
@@ -216,15 +243,15 @@ describe.sequential('Portal workflows', () => {
     const directory = (await hr.get('/api/team')).body.people
     expect(
       directory.every((e) =>
-        e.tasks.some((t) => t.title === title && t.review === 'Draft')
-      )
+        e.tasks.some((t) => t.title === title && t.review === 'Draft'),
+      ),
     ).toBe(true)
     const mine = directory.find((e) => e.id === p.id),
       draft = mine.tasks.find((t) => t.title === title)
     expect(
       (await employee.get('/api/me/checklist')).body.tasks.some(
-        (t) => t.id === draft.id
-      )
+        (t) => t.id === draft.id,
+      ),
     ).toBe(false)
     await post(hr, '/plans/' + p.id + '/steps/' + draft.id, {
       detail: 'Confirm the induction room.',
@@ -236,7 +263,7 @@ describe.sequential('Portal workflows', () => {
       version: mine.version,
     }).expect(409)
     const reviewed = (await hr.get('/api/team')).body.people.find(
-      (e) => e.id === p.id
+      (e) => e.id === p.id,
     )
     await post(hr, '/plans/' + p.id + '/approve', {
       version: reviewed.version,
@@ -244,7 +271,7 @@ describe.sequential('Portal workflows', () => {
     await post(employee, '/tasks/' + draft.id + '/complete', {}).expect(404)
     await post(hr, '/tasks/' + draft.id + '/complete', {}).expect(200)
     const finished = (await employee.get('/api/me/checklist')).body.tasks.find(
-      (t) => t.id === draft.id
+      (t) => t.id === draft.id,
     )
     expect(finished.status).toBe('Complete')
     expect(finished.owner.id).toBe(hrId)

@@ -38,6 +38,31 @@ export function Policies({ user, data, act }) {
         }
       >
         <Field label="Policy title" name="title" value={p?.title} />
+        <Field
+          label="Description"
+          name="description"
+          value={p?.description}
+          required={false}
+        />
+        <Field
+          label="Category"
+          name="category"
+          value={p?.category}
+          required={false}
+        />
+        <Field
+          label="Effective date"
+          name="effectiveDate"
+          type="date"
+          value={p?.effectiveDate}
+          required={false}
+        />
+        <Field
+          label="Policy owner"
+          name="ownerId"
+          value={p?.ownerId || user.id}
+          options={(data.policyOwners || [user]).map((m) => [m.id, m.name])}
+        />
         {p && (
           <Field
             label="Action"
@@ -82,8 +107,33 @@ export function Policies({ user, data, act }) {
         {rows.map((p) => (
           <details key={p.id + ':' + p.version}>
             <summary>
-              {p.title} · v{p.version} · {p.processing}
+              {p.title} · v{p.version} · {p.processing} · {p.owner}
             </summary>
+            <small>
+              {p.approved ? 'Published' : 'Unpublished'} · {p.category} ·{' '}
+              {p.updatedAt
+                ? 'Updated ' + new Date(p.updatedAt).toLocaleDateString()
+                : 'Original edition'}{' '}
+              {p.modifiedBy && 'by ' + p.modifiedBy}
+            </small>
+            <p>
+              {p.description}{' '}
+              {p.effectiveDate && ' · Effective ' + p.effectiveDate}
+            </p>
+            {!!p.revisions.length && (
+              <details>
+                <summary>Version history</summary>
+                {p.revisions.map((r) => (
+                  <article key={r.version}>
+                    <strong>
+                      v{r.version} · {r.title} ·{' '}
+                      {r.modifiedBy || 'Original edition'}
+                    </strong>
+                    <p>{r.body}</p>
+                  </article>
+                ))}
+              </details>
+            )}
             <p className="longtext">{p.body}</p>
             <small>
               {[p.department, p.job, p.location].filter(Boolean).join(' · ') ||
@@ -133,12 +183,19 @@ export function Policies({ user, data, act }) {
             </small>
             {user.role === 'Manager' &&
               s.status === 'Pending' &&
-              ['Reviewed', 'Declined'].map((status) => (
+              ['Approved', 'Declined'].map((status) => (
                 <button
                   className="secondary"
                   key={status}
                   onClick={() =>
-                    act('/suggestions/' + s.id + '/review', { status })
+                    (status !== 'Approved' ||
+                      confirm(
+                        'Publish this suggestion as an addition to the policy?',
+                      )) &&
+                    save('/suggestions/' + s.id + '/review', {
+                      status,
+                      version: rows.find((r) => r.id === s.policyId)?.version,
+                    })
                   }
                 >
                   {status}

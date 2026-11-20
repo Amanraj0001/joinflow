@@ -27,7 +27,7 @@ const post = (agent, path, data) =>
 let alex, maya, hr, manager, profile, other
 beforeAll(async () => {
   ;[alex, maya, hr, manager] = await Promise.all(
-    ['alex', 'maya', 'ellis', 'sam'].map(login)
+    ['alex', 'maya', 'ellis', 'sam'].map(login),
   )
   profile = (await alex.get('/api/me/checklist')).body
   other = (await maya.get('/api/me/checklist')).body
@@ -54,14 +54,14 @@ it('scopes checklist generation, reads, writes and login origin', async () => {
     '/tasks/' +
       profile.tasks.find((t) => t.templateId === 'setup').id +
       '/complete',
-    {}
+    {},
   ).expect(409)
 })
 it('evaluates the fixed 20 questions against authorized live PostgreSQL evidence', async () => {
   const times = [],
     counts = { policy: 0, status: 0, handoff: 0, boundary: 0 }
   for (const [kind, question, expected] of JSON.parse(
-    readFileSync('tests/questions.json')
+    readFileSync('tests/questions.json'),
   )) {
     const start = performance.now()
     const { body } = await post(alex, '/chat', { question }).expect(200)
@@ -69,14 +69,14 @@ it('evaluates the fixed 20 questions against authorized live PostgreSQL evidence
     if (kind === 'policy')
       expect(
         body.evidence.map((e) => e.id),
-        question
+        question,
       ).toContain('policy:' + expected)
     if (kind === 'status')
       expect(
         body.evidence.map((e) => e.id),
-        question
+        question,
       ).toContain(
-        'task:' + profile.tasks.find((t) => t.templateId === expected).id
+        'task:' + profile.tasks.find((t) => t.templateId === expected).id,
       )
     if (kind === 'handoff') expect(body.escalate, question).toBe(true)
     if (kind === 'boundary') expect(body.mode, question).toBe('denied')
@@ -85,7 +85,7 @@ it('evaluates the fixed 20 questions against authorized live PostgreSQL evidence
   times.sort((a, b) => a - b)
   const medianMs = ((times[9] + times[10]) / 2).toFixed(1)
   process.stdout.write(
-    'Chat evaluation ' + JSON.stringify({ counts, medianMs }) + '\n'
+    'Chat evaluation ' + JSON.stringify({ counts, medianMs }) + '\n',
   )
 })
 it('uses available evidence after timeout and rejects unrecognized citations', async () => {
@@ -120,20 +120,20 @@ it('validates managerial authority and records one decision on concurrent retrie
   const outsider = await login('other')
   await post(outsider, path, { decision: 'approved' }).expect(404)
   await Promise.all(
-    [1, 2].map(() => post(manager, path, { decision: 'approved' }).expect(200))
+    [1, 2].map(() => post(manager, path, { decision: 'approved' }).expect(200)),
   )
   expect(
     await db.audit.count({
       where: { employeeId: profile.id, message: { contains: 'was approved' } },
-    })
+    }),
   ).toBe(1)
   const fresh = (await alex.get('/api/me/checklist')).body
   expect(fresh.tasks.find((t) => t.templateId === 'setup').status).toBe(
-    'Available'
+    'Available',
   )
   const { body } = await post(alex, '/chat', { question: 'What is blocked?' })
   expect(
-    body.evidence.find((e) => e.title === 'Set up your workstation').body
+    body.evidence.find((e) => e.title === 'Set up your workstation').body,
   ).toContain('Available')
 })
 it('preserves completed location work and rejects an outdated preview', async () => {
@@ -141,7 +141,7 @@ it('preserves completed location work and rejects an outdated preview', async ()
   const preview = async () =>
     (
       await post(hr, path + '/change-preview', { location: 'Austin' }).expect(
-        200
+        200,
       )
     ).body
   const initial = await preview()
@@ -152,7 +152,7 @@ it('preserves completed location work and rejects an outdated preview', async ()
     '/tasks/' +
       profile.tasks.find((t) => t.templateId === 'london').id +
       '/complete',
-    {}
+    {},
   ).expect(200)
   await post(hr, path + '/apply-change', {
     location: 'Austin',
@@ -166,7 +166,7 @@ it('preserves completed location work and rejects an outdated preview', async ()
   }).expect(200)
   const current = (await alex.get('/api/me/checklist')).body
   expect(current.tasks.find((t) => t.templateId === 'london').status).toBe(
-    'Complete'
+    'Complete',
   )
   expect(current.tasks.some((t) => t.templateId === 'austin')).toBe(true)
 })
@@ -187,7 +187,7 @@ it('creates a hire and delivers only explicitly submitted handoffs to HR', async
   const hire = await login('test')
   expect((await hire.get('/api/me/checklist')).body.tasks).toHaveLength(0)
   const draft = (await hr.get('/api/team')).body.people.find(
-    (p) => p.user.email === data.email
+    (p) => p.user.email === data.email,
   )
   expect(draft.tasks.some((t) => t.source === 'Role')).toBe(true)
   await post(hire, '/tasks/' + draft.tasks[0].id + '/complete', {}).expect(404)
@@ -195,11 +195,11 @@ it('creates a hire and delivers only explicitly submitted handoffs to HR', async
     version: draft.version,
   }).expect(200)
   expect(
-    (await hire.get('/api/me/checklist')).body.tasks.length
+    (await hire.get('/api/me/checklist')).body.tasks.length,
   ).toBeGreaterThan(10)
   expect((await hr.get('/api/team')).body.handoffs).toHaveLength(0)
   await post(hire, '/handoffs', { question: 'Is relocation covered?' }).expect(
-    201
+    201,
   )
   const [item] = (await hr.get('/api/team')).body.handoffs
   const reply = '/handoffs/' + item.id + '/reply'
@@ -225,11 +225,25 @@ it('reaches day-one readiness while optional work remains open', async () => {
     '/approvals/' +
       other.tasks.find((t) => t.templateId === 'laptop').approval.id +
       '/decision',
-    { decision: 'approved' }
+    { decision: 'approved' },
   ).expect(200)
+  const identity = other.tasks.find((t) => t.templateId === 'identity')
+  await post(maya, '/tasks/' + identity.id + '/complete', {}).expect(409)
+  await post(maya, '/documents', {
+    kind: 'Identity document',
+    filename: 'identity.pdf',
+    file: Buffer.from('%PDF-1.4 sample').toString('base64'),
+  }).expect(200)
+  const document = (await maya.get('/api/me/checklist')).body.documents.find(
+    (d) => d.kind === 'Identity document',
+  )
+  await post(hr, '/documents/' + document.id + '/review', {
+    status: 'Approved',
+    updatedAt: document.updatedAt,
+  }).expect(200)
   const available = (await maya.get('/api/me/checklist')).body.tasks
   for (const task of available.filter(
-    (t) => t.required && t.status === 'Available'
+    (t) => t.required && t.status === 'Available',
   )) {
     await post(maya, '/tasks/' + task.id + '/complete', {}).expect(200)
   }
@@ -237,10 +251,10 @@ it('reaches day-one readiness while optional work remains open', async () => {
   expect(ready.readiness.ready).toBe(true)
   expect(ready.readiness.remaining).toEqual([])
   expect(ready.tasks.some((t) => !t.required && t.status === 'Available')).toBe(
-    true
+    true,
   )
   expect(
     (await post(maya, '/chat', { question: 'Am I ready for day one?' })).body
-      .text
+      .text,
   ).toContain('ready for day one')
 })

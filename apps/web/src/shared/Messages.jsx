@@ -49,13 +49,15 @@ export function Messages({ contacts }) {
             </select>
           </label>
           <Notice value={err} />
-          {messages.map((m) => (
-            <article className="handoff" key={m.id}>
-              <strong>{m.senderName}</strong>
-              <p>{m.body}</p>
-              <small>{new Date(m.createdAt).toLocaleString()}</small>
-            </article>
-          ))}
+          <div className="conversation">
+            {messages.map((m) => (
+              <article className="handoff" key={m.id}>
+                <strong>{m.senderName}</strong>
+                <p>{m.body}</p>
+                <small>{new Date(m.createdAt).toLocaleString()}</small>
+              </article>
+            ))}
+          </div>
           <Form
             reset
             label="Send message"

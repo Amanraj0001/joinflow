@@ -22,9 +22,42 @@ export async function suggestTriage(category, description) {
         ],
         ['human', JSON.stringify({ category, description })],
       ],
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(5000) },
     )
     return triage.parse(result)
+  } catch {
+    return null
+  }
+}
+
+export async function reviewGuidance(kind, analysis) {
+  if (!config.groqKey) return null
+  const schema = z.object({ checks: z.array(z.string().max(200)).max(3) })
+  try {
+    const model = new ChatGroq({
+      apiKey: config.groqKey,
+      model: config.groqModel,
+      temperature: 0,
+      maxRetries: 0,
+    })
+    const answer = await model.withStructuredOutput(schema).invoke(
+      [
+        [
+          'system',
+          'Suggest brief manual review checks grounded in these local extraction observations. Never certify authenticity or decide acceptance.',
+        ],
+        [
+          'human',
+          JSON.stringify({
+            submittedType: kind,
+            detectedType: analysis.type,
+            observations: analysis.observations,
+          }),
+        ],
+      ],
+      { signal: AbortSignal.timeout(5000) },
+    )
+    return schema.parse(answer).checks
   } catch {
     return null
   }
