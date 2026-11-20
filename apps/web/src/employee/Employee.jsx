@@ -1,224 +1,102 @@
-import { isLate } from '../shared/Forms'
 import React, { useState } from 'react'
-import { Pill } from '../shared/ui.jsx'
-import {
-  ClipboardList,
-  Compass,
-  Flag,
-  LockKeyhole,
-  ChevronRight,
-  Check,
-} from 'lucide-react'
-export function Employee({
-  profile,
-  initialFilter,
-  target,
-  setTab,
-  act,
-  busy,
-}) {
-  const [filter, setFilter] = useState(initialFilter || 'All'),
-    [open, setOpen] = useState(target || null)
-  const { tasks, readiness } = profile,
-    next = tasks.find((t) => t.id === profile.next)
-  const blocked = tasks.filter((t) => t.status === 'Blocked')
-  const visibleTasks = tasks.filter((t) => {
-    if (filter === 'Pending') return t.status !== 'Complete'
-    if (filter === 'Overdue') return isLate(t)
-    if (filter === 'Day one') return readiness.remaining.includes(t.id)
-    return filter === 'All' || filter === t.status
-  })
-  function action(t) {
-    if (
-      t.completionMethod === 'Evidence' &&
-      !profile.documents.some(
-        (d) => d.kind === t.evidenceKind && d.status === 'Approved',
-      )
-    )
-      return (
-        <button className="primary" onClick={() => setTab('My Documents')}>
-          View required evidence
-        </button>
-      )
-    return (
-      <button
-        disabled={busy}
-        className="primary"
-        onClick={() => act('/tasks/' + t.id + '/complete', {})}
-      >
-        Mark complete <Check size={15} />
-      </button>
-    )
+import { Check, ChevronDown, ClipboardList, Compass, LockKeyhole } from 'lucide-react'
+import { isLate, shortDate } from '../shared/Forms'
+import { Pill } from '../shared/ui'
+import { evidenceFor, personalQueue, taskGroup } from './taskQueue'
+
+const groups = ['Your actions', 'Blocked', 'Waiting for review', 'Assigned to others', 'Completed tasks']
+const filters = ['All', 'Day one', 'Available', 'Blocked', 'In progress', 'Complete', 'Pending', 'Overdue']
+
+export function Employee({ profile, initialFilter, target, setTab, act, busy }) {
+  const [filter, setFilter] = useState(initialFilter || 'All')
+  const [open, setOpen] = useState(target || null)
+  const { tasks, readiness } = profile
+  const mine = personalQueue(profile)
+  const next = mine[0]
+  const blocked = tasks.filter(t => t.status === 'Blocked')
+
+  function matches(task) {
+    if (filter === 'Pending') return task.status !== 'Complete'
+    if (filter === 'Overdue') return isLate(task)
+    if (filter === 'Day one') return readiness.remaining.includes(task.id)
+    return filter === 'All' || task.status === filter
   }
-  const renderTask = (t) => (
-    <article className="task" key={t.id}>
-      <button
-        className="taskrow"
-        onClick={() => setOpen(open === t.id ? null : t.id)}
-        aria-expanded={open === t.id}
-      >
-        <span className={'taskicon ' + t.status.toLowerCase()}>
-          {t.status === 'Complete' ? (
-            <Check />
-          ) : t.status === 'Blocked' ? (
-            <LockKeyhole />
-          ) : (
-            <ClipboardList />
-          )}
+
+  function action(task, featured = false) {
+    const evidence = evidenceFor(task, profile)
+    if (task.completionMethod === 'Evidence' && evidence?.status !== 'Approved')
+      return <button className="primary" onClick={() => setTab('My Documents')}>
+        {evidence ? 'Replace document' : 'Submit document'}
+      </button>
+    if (featured && task.status === 'Available')
+      return <button className="primary" disabled={busy} onClick={() => act('/tasks/' + task.id + '/start', {})}>Start task</button>
+    return <button className="primary" disabled={busy} onClick={() => act('/tasks/' + task.id + '/complete', {})}>Mark complete <Check size={15}/></button>
+  }
+
+  function renderTask(task) {
+    const group = taskGroup(task, profile)
+    const expanded = open === task.id
+    return <article className="task" key={task.id}>
+      <button className="taskrow" aria-expanded={expanded} aria-controls={expanded ? 'detail-'+task.id : undefined}
+        onClick={() => setOpen(expanded ? null : task.id)}>
+        <span className={'taskicon '+task.status.toLowerCase()}>
+          {task.status === 'Complete' ? <Check/> : task.status === 'Blocked' ? <LockKeyhole/> : <ClipboardList/>}
         </span>
         <span className="taskname">
-          <strong>{t.title}</strong>
-          <small>
-            {t.category} · {t.owner.name}
-          </small>
+          <strong>{task.title}</strong>
+          <small>{task.owner.id === profile.userId ? 'Assigned to you' : task.owner.name}
+            {task.due && ' · '+(isLate(task) ? 'Overdue since ' : 'Due ')+shortDate(task.due)}</small>
+          {task.needs.map(n => <small className="dependency-note" key={n.id}>Waiting for {n.title} · {n.owner}</small>)}
+          {task.approval?.decision === 'declined' && <small className="dependency-note">Approval declined · Contact {task.owner.name} or HR</small>}
+          {group === 'Waiting for review' && <small>{task.evidenceKind} submitted · Awaiting HR review</small>}
         </span>
-        <Pill value={t.status} />
-        <ChevronRight size={15} />
+        <Pill value={group === 'Waiting for review' ? 'Under review' : task.status}/>
+        <ChevronDown size={15} className={expanded ? 'turned' : ''}/>
       </button>
-      {open === t.id && (
-        <div className="taskdetail">
-          <p>{t.description}</p>
-          <small>{t.completionMethod} completion</small>
-          <small>
-            {t.required ? 'Required for day one' : 'Optional for day one'}
-          </small>
-          {t.owner.id === profile.userId &&
-            t.status === 'Available' &&
-            !t.approval && (
-              <button
-                disabled={busy}
-                onClick={() => act('/tasks/' + t.id + '/start', {})}
-              >
-                Start task
-              </button>
-            )}
-          {t.needs.map((n) => (
-            <p key={n.id}>
-              Waiting for {n.title} · {n.owner}
-            </p>
-          ))}
-          {t.approval?.decision === 'declined' && (
-            <p>Request declined. Contact your manager or HR.</p>
-          )}
-          {t.owner.id === profile.userId &&
-            ['Available', 'In progress'].includes(t.status) &&
-            action(t)}
-        </div>
-      )}
+      {expanded && <div id={'detail-'+task.id} className="taskdetail">
+        <p>{task.description}</p>
+        <small>{task.category} · {task.completionMethod} completion · {task.required ? 'Required' : 'Optional'} for day one</small>
+        {group === 'Your actions' && <div className="task-actions">
+          {task.status === 'Available' && task.completionMethod !== 'Evidence' && <button className="secondary" disabled={busy} onClick={() => act('/tasks/'+task.id+'/start',{})}>Start task</button>}
+          {action(task)}
+        </div>}
+        {group === 'Waiting for review' && <button onClick={() => setTab('My Documents')}>View submission</button>}
+      </div>}
     </article>
-  )
-  return (
-    <>
-      <section className="hero">
-        <div>
-          <div className="eyebrow">DAY-ONE READINESS</div>
-          <h2>
-            {readiness.ready ? 'Ready for day one' : 'Your onboarding journey'}
-          </h2>
-          <p>
-            {readiness.complete} of {readiness.total} required tasks complete
-          </p>
-          <progress
-            aria-label="Day-one readiness"
-            max={readiness.total || 1}
-            value={readiness.complete}
-          />
-        </div>
-        <div className="heroflag">
-          <Flag size={44} strokeWidth={1} />
-        </div>
+  }
+
+  return <div className="employee-tasks">
+    <div className="people-overview">
+      <section className="task-focus">
+        <div className="eyebrow"><Compass size={16}/> Next action</div>
+        <h2>{next?.title || (profile.plan === 'Draft' ? 'HR is reviewing your plan' : 'No action needed from you')}</h2>
+        {next && <><p>{next.description}</p>
+          <small>{next.status}{next.due && ' · Due '+shortDate(next.due)}</small>
+          {action(next,true)}</>}
       </section>
-      <div className="dashboard">
-        <section className="panel">
-          <div className="secthead">
-            <ClipboardList size={20} />
-            <h2>My checklist</h2>
-            <span className="count">{tasks.length}</span>
-          </div>
-          <div className="tabs">
-            {[
-              'All',
-              'Day one',
-              'Available',
-              'Blocked',
-              'In progress',
-              'Complete',
-              'Pending',
-              'Overdue',
-            ].map((f) => (
-              <button
-                className={filter === f ? 'active' : ''}
-                aria-pressed={filter === f}
-                key={f}
-                onClick={() => setFilter(f)}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          {visibleTasks
-            .filter((t) => t.status !== 'Complete')
-            .sort(
-              (a, b) =>
-                Number(
-                  b.status === 'Available' && b.owner.id === profile.userId,
-                ) -
-                Number(
-                  a.status === 'Available' && a.owner.id === profile.userId,
-                ),
-            )
-            .map(renderTask)}
-          {visibleTasks.some((t) => t.status === 'Complete') && (
-            <details
-              open={
-                filter === 'Complete' ||
-                visibleTasks.some(
-                  (t) => t.id === target && t.status === 'Complete',
-                )
-              }
-            >
-              <summary>
-                Completed tasks (
-                {visibleTasks.filter((t) => t.status === 'Complete').length})
-              </summary>
-              {visibleTasks
-                .filter((t) => t.status === 'Complete')
-                .map(renderTask)}
-            </details>
-          )}
-          {!visibleTasks.length && <p>No {filter.toLowerCase()} tasks.</p>}
-        </section>
-        <aside>
-          <section className="panel next">
-            <div className="eyebrow">
-              <Compass size={15} /> UP NEXT
-            </div>
-            <h2>{next?.title || 'All caught up'}</h2>
-            <p>{next?.description || 'Your available tasks are complete.'}</p>
-            {next && action(next)}
-          </section>
-          <section className="panel">
-            <div className="secthead">
-              <LockKeyhole size={18} />
-              <h2>Current blockers</h2>
-            </div>
-            {blocked.length ? (
-              blocked.map((t) => (
-                <div key={t.id} className="blocker">
-                  <strong>{t.title}</strong>
-                  <small>
-                    {t.needs
-                      .map((n) => n.title + ' · ' + n.owner)
-                      .join(' / ') || 'Request declined · ' + t.owner.name}
-                  </small>
-                </div>
-              ))
-            ) : (
-              <p>No tasks are blocked.</p>
-            )}
-          </section>
-        </aside>
+      <section className="task-readiness">
+        <h2>Day-one readiness</h2>
+        <p><strong>{readiness.complete} of {readiness.total}</strong> required tasks complete</p>
+        <progress aria-label="Day-one readiness" value={readiness.complete} max={readiness.total || 1}/>
+        <button className="task-block-link" onClick={() => {
+          setFilter('Blocked')
+          document.getElementById('task-list-title')?.focus()
+        }}><LockKeyhole size={16}/> {blocked.length} blocked {blocked.length === 1 ? 'task' : 'tasks'} <span>View blockers →</span></button>
+      </section>
+    </div>
+    <section className="panel">
+      <h2 id="task-list-title" tabIndex={-1}>My checklist</h2>
+      <div className="tabs" aria-label="Filter tasks">
+        {filters.map(f => <button key={f} className={filter === f ? 'active' : ''} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>)}
       </div>
-    </>
-  )
+      {groups.map(group => {
+        const list = (group === 'Your actions' ? mine : tasks.filter(t => taskGroup(t,profile) === group)).filter(matches)
+        if (!list.length) return null
+        if (group === 'Completed tasks') return <details key={group} open={filter === 'Complete' || list.some(t => t.id === target)}>
+          <summary>{group} ({list.length})</summary>{list.map(renderTask)}</details>
+        return <section className="task-group" key={group}><h3>{group} <span>{list.length}</span></h3>{list.map(renderTask)}</section>
+      })}
+      {!tasks.some(matches) && <p>{filter === 'All' ? 'No tasks assigned yet.' : 'No matching tasks.'}</p>}
+    </section>
+  </div>
 }

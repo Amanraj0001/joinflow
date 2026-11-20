@@ -1,15 +1,18 @@
 import React, { useState } from 'react'
-import { CheckCircle, Clock, AlertCircle } from 'lucide-react'
-import { Panel, Form, Field, file64, shortDate, isLate } from '../shared/Forms'
+import { ArrowUpRight } from 'lucide-react'
+import { Panel, shortDate, isLate } from '../shared/Forms'
 import { Tickets } from '../shared/Tickets'
 import { Chat } from './Assistant'
 import { Employee } from './Employee'
+import { Documents } from './Documents'
+import { EquipmentAccess } from './EquipmentAccess'
+import { personalQueue } from './taskQueue'
 export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
   const [filter, setFilter] = useState('Unread')
   const [page, target] = tab.split('|')
   const tasks = p.tasks,
     complete = tasks.filter((t) => t.status === 'Complete').length,
-    next = tasks.find((t) => t.id === p.next)
+    next = personalQueue(p)[0]
   const notices = p.notifications || [],
     deadline = tasks
       .filter((t) => t.due && t.status !== 'Complete')
@@ -44,73 +47,9 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
         <p>Reporting manager · {p.manager.name}</p>
       </Panel>
     )
-  if (page === 'My Documents')
-    return (
-      <Panel title="Required documents">
-        {p.requiredDocuments.map((kind) => {
-          const doc = p.documents.find((d) => d.kind === kind)
-          return (
-            <article
-              className="handoff"
-              key={kind}
-              autoFocus={Boolean(target && target === doc?.id)}
-              tabIndex={-1}
-            >
-              <h3>{kind}</h3>
-              <p>{doc?.status || 'Awaiting submission'}</p>
-              {doc && (
-                <a href={'/api/documents/' + doc.id + '/download'}>
-                  Download {doc.filename}
-                </a>
-              )}
-              {doc?.reason && <p>HR feedback · {doc.reason}</p>}
-              {(!doc ||
-                ['Rejected', 'Resubmission Required'].includes(doc.status)) && (
-                <Form
-                  reset
-                  label={doc ? 'Replace document' : 'Submit document'}
-                  submit={async ({ file }) =>
-                    act('/documents', {
-                      kind,
-                      filename: file.name,
-                      file: await file64(file),
-                    })
-                  }
-                >
-                  <Field
-                    label="PDF, up to 5 MB"
-                    type="file"
-                    accept="application/pdf"
-                    name="file"
-                  />
-                </Form>
-              )}
-            </article>
-          )
-        })}
-      </Panel>
-    )
+  if (page === 'My Documents') return <Documents profile={p} target={target} act={act} />
   if (tab === 'Equipment & Access')
-    return (
-      <Panel title="Equipment and system access">
-        {tasks
-          .filter((t) => ['Equipment', 'Workplace', 'IT'].includes(t.category))
-          .map((t) => (
-            <article className="handoff" key={t.id}>
-              <strong>{t.title}</strong>
-              <p>
-                {t.status} · {t.owner.name}
-              </p>
-              {t.needs.map((n) => (
-                <small key={n.id}>
-                  Waiting for {n.title} · {n.owner}
-                </small>
-              ))}
-            </article>
-          ))}
-        {navigate('My Tasks', 'Open checklist')}
-      </Panel>
-    )
+    return <EquipmentAccess profile={p} setTab={setTab} />
   if (tab === 'Notifications')
     return (
       <Panel title="Updates and reminders">
@@ -193,50 +132,41 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
     )
   return (
     <>
-      <section className="hero">
-        <div>
-          <small>YOUR ONBOARDING PROGRESS</small>
-          <h2 className="progress-title">
-            {tasks.length ? Math.round((100 * complete) / tasks.length) : 0}%
-            complete
-          </h2>
-          <p>
-            {p.plan === 'Draft'
-              ? 'HR is reviewing your onboarding plan.'
-              : p.readiness.ready
-                ? 'Ready for day one'
-                : p.readiness.remaining.length +
-                  ' day-one requirements remaining'}
-          </p>
-          <progress
-            aria-label="Overall onboarding progress"
-            value={complete}
-            max={tasks.length || 1}
-          />
-        </div>
-        {navigate('AI Assistant', 'Ask the assistant')}
-      </section>
-      <div className="stats">
-        {[
-          ['Completed', complete],
-          ['Pending', tasks.length - complete],
-          ['Overdue', tasks.filter(isLate).length],
-        ].map(([k, n], i) => (
-          <button
-            key={k}
-            onClick={() =>
-              setTab('My Tasks|' + (k === 'Completed' ? 'Complete' : k))
-            }
-          >
-            {React.createElement([CheckCircle, Clock, AlertCircle][i], {
-              size: 20,
-            })}
-            <small>{k}</small>
-            <b>{n}</b>
+      <div className="people-overview">
+        <section className="hire-overview">
+          <h2>My onboarding progress</h2>
+          <button className="active-hire-link" onClick={() => setTab('My Tasks')}>
+            <strong>{tasks.length ? Math.round(100 * complete / tasks.length) + '%' : '—'}</strong>
+            Open checklist <ArrowUpRight size={18} />
           </button>
-        ))}
+          <div className="readiness-caption">
+            <span>{p.plan === 'Draft' ? 'Plan awaiting HR approval' : p.readiness.ready ? 'Ready for day one' : 'Tasks completed'}</span>
+            <span>{complete} of {tasks.length}</span>
+          </div>
+          <progress aria-label="Overall onboarding progress" value={complete} max={tasks.length || 1} />
+          <div className="hire-links">
+            {[
+              ['Completed', complete, 'Complete'],
+              ['Pending', tasks.length - complete, 'Pending'],
+              ['Overdue', tasks.filter(isLate).length, 'Overdue'],
+            ].map(([label, count, filter]) => (
+              <button key={filter} onClick={() => setTab('My Tasks|' + filter)}>
+                <strong>{count}</strong>{label}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="employee-next">
+          <h2>Next action</h2>
+          <p className="recommended">{next?.title || 'No available task right now.'}</p>
+          {next && <small>{next.department} · {next.due ? 'Due ' + shortDate(next.due) : 'No deadline'}</small>}
+          <div className="overview-actions">
+            {next && navigate('My Tasks|All|' + next.id, 'View task')}
+            {navigate('AI Assistant', 'Ask the assistant')}
+          </div>
+        </section>
       </div>
-      <div className="dashboard">
+      <div className="overview-details">
         <Panel title="Upcoming deadlines">
           {deadline
             .filter((t) => !isLate(t))
@@ -251,16 +181,6 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
             ))}
           {!deadline.some((t) => !isLate(t)) && <p>No upcoming deadlines.</p>}
         </Panel>
-        <Panel title="Next action">
-          <p className="recommended">
-            {next?.title || 'No available task right now.'}
-          </p>
-          {navigate(
-            next ? 'My Tasks|All|' + next.id : 'My Tasks',
-            'Open checklist',
-          )}
-        </Panel>
-      </div>
       <Panel title="Recent notifications">
         {!notices.length && <p>No updates yet.</p>}
         {notices.slice(0, 3).map((n) => (
@@ -271,6 +191,7 @@ export function EmployeePortal({ profile: p, tab, act, busy, setTab }) {
         ))}
         {navigate('Notifications', 'View all updates')}
       </Panel>
+      </div>
     </>
   )
 }

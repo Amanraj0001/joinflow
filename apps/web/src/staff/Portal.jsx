@@ -97,7 +97,10 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
   if (page === 'Tasks')
     return (
       <TaskMonitor
-        {...{ tasks, filter, departments, blocked, pending, user, act }}
+        key={tab}
+        documents={data.documents}
+        plans={people.filter(drafts)}
+        {...{ tasks, filter, departments, user, act, busy, setTab }}
       />
     )
   if (page === 'Employees')
@@ -110,39 +113,17 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
     ['Overdue tasks', late.length, 'Tasks|Overdue'],
     ['Critical blockers', blocked.length, 'Tasks|Blocked'],
   ]
-  const cards = [
-    [
-      'Active hires',
-      people.filter((p) => !p.readiness.ready).length,
-      'Employees|Active',
-    ],
-    ['Joining soon', people.filter(soon).length, 'Employees|Joining soon'],
-    ...queue,
-    ['Requires attention', people.filter(risk).length, 'Escalations'],
-    [
-      'Day-one ready',
-      people.filter((p) => p.readiness.ready).length,
-      'Employees|Ready',
-    ],
-  ]
   return (
     <>
-      {hr ? (
-        <PeopleOverview people={people} joining={people.filter(soon).length}
-          attention={people.filter(risk).length} queues={queue} setTab={setTab} />
-      ) : <div className="stats portalstats">
-        {cards.map(([k, v, page]) => (
-          <button
-            key={k}
-            onClick={() => {
-              setTab(page)
-            }}
-          >
-            <small>{k}</small>
-            <b>{v}</b>
-          </button>
-        ))}
-      </div>}
+      <PeopleOverview
+        people={people}
+        joining={people.filter(soon).length}
+        attention={people.filter(risk).length}
+        queues={queue}
+        team={!hr}
+        setTab={setTab}
+      />
+      <div className="overview-details staff-details">
       <Panel title="Department progress">
         {departments.length === 0 && <p>No onboarding tasks assigned yet.</p>}
         <ul className="department-chart">
@@ -165,15 +146,18 @@ export function StaffPortal({ user, data, tab, act, busy, setTab }) {
         </ul>
       </Panel>
       <Panel title="Recent onboarding activity">
+        {!history.length && <p>No onboarding activity yet.</p>}
         {history.slice(0, 5).map((e) => (
-          <p key={e.id}>
-            {e.actor.name} · {e.message}
+          <p className="timeline-row" key={e.id}>
+            {e.message}
+            <small>{e.actor.name} · {new Date(e.createdAt).toLocaleDateString()}</small>
           </p>
         ))}
         <button className="secondary" onClick={() => setTab('History')}>
           View history
         </button>
       </Panel>
+      </div>
     </>
   )
 }

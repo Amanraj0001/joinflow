@@ -1,14 +1,14 @@
 import React from 'react'
 import { ArrowUpRight } from 'lucide-react'
 
-export function PeopleOverview({ people, joining, attention, queues, setTab }) {
+export function PeopleOverview({ people, joining, attention, queues, team, setTab }) {
   const ready = people.filter((person) => person.readiness.ready).length
   const total = people.length
 
   return (
     <div className="people-overview">
       <section className="hire-overview">
-        <h2>Onboarding readiness</h2>
+        <h2>{team ? 'Team readiness' : 'Onboarding readiness'}</h2>
         <button className="active-hire-link" onClick={() => setTab('Employees|Active')}>
           <strong>{total - ready}</strong> Active hires <ArrowUpRight size={18} />
         </button>
@@ -23,7 +23,7 @@ export function PeopleOverview({ people, joining, attention, queues, setTab }) {
         </div>
       </section>
       <section className="hr-queue">
-        <h2>HR work queue</h2>
+        <h2>{team ? 'Manager work queue' : 'HR work queue'}</h2>
         {queues.map(([label, count, destination]) => (
           <button key={destination} onClick={() => setTab(destination)}>
             <span>{label}</span>

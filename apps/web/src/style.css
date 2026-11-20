@@ -1034,3 +1034,85 @@ summary:focus-visible {
 @media (max-width: 850px) {
   .people-overview { grid-template-columns: 1fr; }
 }
+
+.overview-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.employee-next { background: #fff; border: 1px solid #d6dfcf; }
+.employee-next .recommended { margin: .7rem 0 .35rem; }
+.overview-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.25rem; }
+.staff-details .department-chart li { grid-template-columns: minmax(0, 1fr) auto; gap: .35rem; }
+.staff-details .department-chart progress { grid-column: 1 / -1; grid-row: 2; }
+.staff-details .department-chart .department-empty { grid-column: auto; }
+@media (max-width: 850px) {
+  .overview-details { grid-template-columns: minmax(0, 1fr); }
+}
+
+.task-focus { background: #213f35; color: #faf9ed; }
+.task-focus .eyebrow { display: flex; gap: .5rem; align-items: center; color: #d5eab3; }
+.task-focus h2 { margin: .65rem 0; font-size: 1.5rem; }
+.task-focus small, .taskname small { display: block; margin-top: .3rem; }
+.task-focus .primary { display: inline-flex; background: #daeab9; color: #213f35; margin-top: 1rem; }
+.task-readiness { background: white; border: 1px solid #d6dfcf; }
+.task-readiness progress { width: 100%; height: .6rem; accent-color: #38664c; }
+.task-block-link { display: flex; gap: .45rem; flex-wrap: wrap; align-items: center; width: 100%; margin-top: 1rem; padding-top: .8rem; border-top: 1px solid #d6dfcf; }
+.task-block-link span { margin-left: auto; text-decoration: underline; }
+.task-group { margin-top: 1.2rem; }
+.task-group h3 { font-size: 1rem; color: #355944; }
+.task-group h3 span { font-size: .85rem; margin-left: .3rem; }
+.taskrow .dependency-note { color: #75461f; }
+.task-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.taskrow .turned { transform: rotate(180deg); }
+.employee-tasks .taskname { min-width: 0; overflow-wrap: anywhere; }
+.employee-tasks .tabs { flex-wrap: wrap; }
+
+.document-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(9rem, 1fr);
+  align-items: center;
+  gap: 1.25rem;
+  padding: clamp(1rem, 3vw, 1.7rem);
+  margin-bottom: 1rem;
+  border-radius: 14px;
+  background: #213f35;
+  color: #faf9ed;
+}
+.document-overview .eyebrow, .document-file a {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+.document-overview .eyebrow { color: #daebba; }
+.document-overview h2 { font-size: 1.5rem; margin: .4rem 0; }
+.document-overview button { margin-top: .8rem; background: #edf4df; color: #213f35; }
+.document-progress progress { display: block; width: 100%; margin-top: .5rem; accent-color: #c6dca0; }
+.document-item { padding: 1rem 0 .3rem; overflow-wrap: anywhere; }
+.document-item + .document-item { border-top: 1px solid #dce4d8; margin-top: .8rem; }
+.document-heading, .document-file { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .4rem 1rem; }
+.document-heading small { background: #edf2e7; border-radius: .4rem; padding: .15rem .55rem; }
+.document-file { margin-top: .65rem; }
+.document-file a { min-width: 0; text-decoration: underline; display: inline; }
+.document-file a svg { display: inline; vertical-align: middle; }
+.document-feedback { padding: .7rem .9rem; background: #faf0df; border-left: 3px solid #aa7138; margin-top: .6rem; }
+.document-feedback strong { display: block; }
+.document-workspace input[type=file] { max-width: 100%; min-width: 0; }
+@media (max-width: 640px) {
+  .document-overview { grid-template-columns: minmax(0, 1fr); }
+}
+
+.equipment-access .tabs { flex-wrap: wrap; margin-bottom: 1rem; }
+.access-item { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .8rem; padding: 1rem 0 .4rem; overflow-wrap: anywhere; }
+.access-item + .access-item { margin-top: .6rem; border-top: 1px solid #dce4d8; }
+.access-item > svg { color: #37654b; margin-top: .2rem; }
+.access-item h3 { font-size: 1rem; }
+.access-item small { display: block; margin: .15rem 0 .5rem; }
+.access-dependency { margin: .4rem 0; padding-left: .65rem; border-left: 3px solid #cfab71; font-size: .9rem; }
+.access-dependency button { text-decoration: underline; text-align: left; }
+.access-open { display: inline-flex; align-items: center; gap: .3rem; color: #315f46; margin-top: .6rem; font-weight: 600; }
+
+.task-buckets { flex-wrap: wrap; margin-bottom: 1rem; }
+.staff-task-note { display: block; color: #75461f; font-size: .82rem; }
+.task-sheet .task-actions { margin: 1rem 0; }

@@ -4,51 +4,94 @@ export function TaskMonitor({
   tasks,
   filter,
   departments,
-  blocked,
-  pending,
   user,
   act,
+  busy,
+  documents,
+  plans,
+  setTab,
 }) {
+  const hr = user.role === 'HR'
+  const [scope, setScope] = useState(filter ? 'All tasks' : 'My tasks')
+  const [bucket, setBucket] = useState(
+    filter === 'Blocked' ? 'Critical blockers' :
+    ['Overdue', 'Pending'].includes(filter) ? filter : 'All'
+  )
   const [search, q] = useState(''),
     [dept, department] = useState(''),
     [owner, assignee] = useState(''),
     [state, status] = useState('')
   const [selected, select] = useState(filter || '')
-  const item = tasks.find((t) => t.id === selected)
-  const visible = tasks.filter(
-    (t) =>
-      (filter === 'Overdue'
-        ? isLate(t) && t.review === 'Approved'
-        : filter === 'Blocked'
-          ? blocked.some((b) => b.id === t.id)
-          : filter === 'Pending'
-            ? pending.some((b) => b.id === t.id)
-            : true) &&
-      (!state || t.status === state) &&
-      (!dept || dept === t.department) &&
-      (!owner || owner === t.owner.name) &&
-      t.person.toLowerCase().includes(search.toLowerCase()),
+  const item = tasks.find(t => t.id === selected)
+  const myTasks = tasks.filter(t => t.owner.id === user.id)
+  const scoped = scope === 'My tasks' ? myTasks : tasks
+  const open = t => t.review === 'Approved' && t.status !== 'Complete'
+  const actionable = t => open(t) && ['Available', 'In progress'].includes(t.status)
+  const hasEvidence = t => !t.evidenceKind || !hr || documents?.some(
+    d => d.employeeId === t.employeeId && d.kind === t.evidenceKind && d.status === 'Approved'
   )
+  const next = myTasks.filter(t => actionable(t) && hasEvidence(t)).sort((a,b) =>
+    Number(Boolean(isLate(b))) - Number(Boolean(isLate(a))) ||
+    Number(b.status === 'In progress') - Number(a.status === 'In progress') ||
+    (a.due || '9999').localeCompare(b.due || '9999')
+  )[0]
+  const queues = {
+    'All': scoped,
+    'Pending': scoped.filter(open),
+    'In progress': scoped.filter(t => t.status === 'In progress'),
+    'Completed': scoped.filter(t => t.status === 'Complete'),
+    'Overdue': scoped.filter(t => open(t) && isLate(t)),
+    'Blocked': scoped.filter(t => t.status === 'Blocked'),
+    'Critical blockers': scoped.filter(t => t.required && t.status === 'Blocked'),
+  }
+  const visible = queues[bucket].filter(t =>
+    (!state || t.status === state) && (!dept || dept === t.department) &&
+    (!owner || owner === t.owner.name) && t.person.toLowerCase().includes(search.trim().toLowerCase())
+  )
+  function changeScope(value) {
+    setScope(value)
+    setBucket('All')
+    q('')
+    department('')
+    assignee('')
+    status('')
+    select('')
+  }
   return (
-    <Panel title="Task monitoring">
-      <div className="stats">
-        {[
-          ['Total tasks', tasks.length],
-          ['Pending', pending.filter((t) => t.status !== 'In progress').length],
-          [
-            'In progress',
-            tasks.filter((t) => t.status === 'In progress').length,
-          ],
-          ['Completed', tasks.filter((t) => t.status === 'Complete').length],
-          ['Overdue', pending.filter(isLate).length],
-        ].map(([k, n]) => (
-          <section key={k}>
-            <small>{k}</small>
-            <b>{n}</b>
-          </section>
-        ))}
+    <>
+      <div className="people-overview">
+        <section className="task-focus">
+          <div className="eyebrow">My next action</div>
+          <h2>{next?.title || 'No assigned task ready to action'}</h2>
+          {next && <>
+            <p>{next.person} · {next.department}{next.due && ' · Due '+shortDate(next.due)}</p>
+            <button className="primary" onClick={() => select(next.id)}>
+              {next.approval ? 'Review decision' : 'Open task'}
+            </button>
+          </>}
+        </section>
+        <section className="hr-queue">
+          <h2>{hr ? 'HR follow-up' : 'Team follow-up'}</h2>
+          {hr ? <button onClick={() => setTab(plans.length ? 'Plans|'+plans[0].id : 'Plans')}>
+            <span>Plans awaiting approval</span><b>{plans.length}</b>
+          </button> : <button onClick={() => setTab('Decisions')}>
+            <span>Pending decisions</span><b>{myTasks.filter(t => open(t) && t.approval && !t.approval.decision).length}</b>
+          </button>}
+          {['Blocked','Overdue'].map(label => <button key={label} onClick={() => {
+            changeScope('All tasks')
+            setBucket(label)
+          }}><span>{label} tasks</span><b>{tasks.filter(t => open(t) && (label === 'Blocked' ? t.status === 'Blocked' : isLate(t))).length}</b></button>)}
+        </section>
       </div>
-      <div className="formgrid">
+      <Panel title="Task monitoring">
+      <div className="tabs" role="group" aria-label="Task scope">
+        {['My tasks','All tasks'].map(value => <button key={value} className={value === scope ? 'active' : ''} aria-pressed={value === scope} onClick={() => changeScope(value)}>{value} · {value === 'My tasks' ? myTasks.length : tasks.length}</button>)}
+      </div>
+      <div className="tabs task-buckets" role="group" aria-label="Task queue">
+        {Object.entries(queues).filter(([key]) => key !== 'Critical blockers' || bucket === key).map(([key, rows]) =>
+          <button key={key} className={key === bucket ? 'active' : ''} aria-pressed={key === bucket} onClick={() => setBucket(key)}>{key} · {rows.length}</button>
+        )}
+      </div>      <div className="formgrid">
         <label>
           Employee
           <input value={search} onChange={(e) => q(e.target.value)} />
@@ -113,7 +156,10 @@ export function TaskMonitor({
                 <td>{t.department}</td>
                 <td>{t.owner.name}</td>
                 <td>{shortDate(t.due)}</td>
-                <td>{t.status}</td>
+                <td>{t.status}
+                  {t.needs.map(n => <small className="staff-task-note" key={n.id}>Waiting for {n.title} · {n.owner}</small>)}
+                  {t.approval?.decision === 'declined' && <small className="staff-task-note">Declined by {t.owner.name}</small>}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -140,16 +186,21 @@ export function TaskMonitor({
               Waiting for {n.title} · {n.owner}
             </p>
           ))}
-          {item.owner.id === user.id &&
-            !item.approval &&
-            ['In progress', 'Available'].includes(item.status) && (
-              <button
-                onClick={() => act('/tasks/' + item.id + '/complete', {})}
-              >
-                Mark complete
-              </button>
-            )}
-          <details>
+          {item.approval?.decision === 'declined' && <p>Approval declined by {item.owner.name}.</p>}
+          {hr && ['Draft','Accepted'].includes(item.review) && <button className="secondary" onClick={() => setTab('Plans|'+item.employeeId)}>Review onboarding plan</button>}
+          {item.owner.id === user.id && actionable(item) && (
+            item.approval ? user.role === 'Manager' && <div className="task-actions">
+              {['approved','declined'].map(decision => <button key={decision} disabled={busy}
+                className={decision === 'approved' ? 'primary' : 'secondary'}
+                onClick={() => act('/approvals/'+item.approval.id+'/decision',{decision})}>
+                {decision === 'approved' ? 'Approve' : 'Decline'}
+              </button>)}
+            </div> : !hasEvidence(item) ? <button className="secondary" onClick={() => setTab('Documents')}>Check required document</button> :
+            <div className="task-actions">
+              {item.status === 'Available' && <button disabled={busy} className="secondary" onClick={() => act('/tasks/'+item.id+'/start',{})}>Start task</button>}
+              <button disabled={busy} className="primary" onClick={() => act('/tasks/'+item.id+'/complete',{})}>Mark complete</button>
+            </div>
+          )}          <details>
             <summary>Activity history</summary>
             {item.history.length ? (
               item.history.map((e) => (
@@ -164,5 +215,6 @@ export function TaskMonitor({
         </aside>
       )}
     </Panel>
+    </>
   )
 }
